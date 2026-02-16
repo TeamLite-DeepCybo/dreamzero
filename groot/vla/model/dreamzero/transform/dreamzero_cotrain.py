@@ -104,7 +104,12 @@ def collate(features: List[dict], tokenizer: AutoTokenizer, num_views=3, embodim
                     if num_views > 1 and elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.AGIBOT.value]:
                         processed_item = "A multi-view video shows that a robot " + processed_item.lower() + " The video is split into four views: The top-left view shows the camera view from the robot's head, the top-right view shows the camera view from the right hand, the bottom-left view shows the camera view from the left hand, and the bottom-right view is a black screen (inactive view). The robot " + processed_item.lower()
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.OXE_DROID.value]:
-                        processed_item = "A multi-view video shows that a robot " + processed_item.lower() + " The video is split into two views placed horizontally: The left view shows an exterior camera view of the robot, and the right view shows the camera view from the robot's wrist. The robot " + processed_item.lower()
+                        processed_item = (
+                            "A multi-view video shows that a robot "
+                            + processed_item.lower()
+                            + " The video is split into three views: The top view shows the camera view from the robot's wrist, the bottom-left view shows the camera view from the left exterior camera, and the bottom-right view shows the camera view from the right exterior camera. During training, one of the two bottom exterior views may be a black screen (dropped view). The robot "
+                            + processed_item.lower()
+                        )
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.GR1_UNIFIED.value]:
                         processed_item = "A single view video shows that a human " + processed_item.lower()
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.MECKA_HANDS.value]:
@@ -119,7 +124,12 @@ def collate(features: List[dict], tokenizer: AutoTokenizer, num_views=3, embodim
                     if num_views > 1 and elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.AGIBOT.value]:
                         item = "A multi-view video shows that a robot " + str(item).lower() + " The video is split into four views: The top-left view shows the camera view from the robot's head, the top-right view shows the camera view from the right hand, the bottom-left view shows the camera view from the left hand, and the bottom-right view is a black screen (inactive view). The robot " + str(item).lower()
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.OXE_DROID.value]:
-                        item = "A multi-view video shows that a robot " + str(item).lower() + " The video is split into two views placed horizontally: The left view shows an exterior camera view of the robot, and the right view shows the camera view from the robot's wrist. The robot " + str(item).lower()
+                        item = (
+                            "A multi-view video shows that a robot "
+                            + str(item).lower()
+                            + " The video is split into three views: The top view shows the camera view from the robot's wrist, the bottom-left view shows the camera view from the left exterior camera, and the bottom-right view shows the camera view from the right exterior camera. During training, one of the two bottom exterior views may be a black screen (dropped view). The robot "
+                            + str(item).lower()
+                        )
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.GR1_UNIFIED.value]:
                         item = "A single view video shows that a human " + str(item).lower() 
                     elif elem["embodiment_id"] == embodiment_tag_mapping[EmbodimentTag.MECKA_HANDS.value]:
@@ -295,28 +305,42 @@ class DreamTransform(InvertibleModalityTransform):
         if images.shape[0] > 1:
             v, t, c, h, w = images.shape
             
-            # For DROID embodiment: randomly select one exterior image + wrist image
-            # Layout: [selected_exterior | wrist] (horizontal concatenation)
-            # View 0: exterior_image_1_left
-            # View 1: exterior_image_2_left  
-            # View 2: wrist_image_left
+            # For DROID embodiment: 2x2 grid where the wrist view spans the full top row,
+            # and the two exterior views occupy the bottom row.
+            #
+            # View indices (expected):
+            # - View 0: left exterior
+            # - View 1: right exterior
+            # - View 2: wrist
+            #
+            # Layout:
+            #   [wrist, wrist]     (wrist duplicated to have 2x width)
+            #   [left_ext | right_ext]
+            #
+            # Training-time augmentation:
+            # - Randomly drop (black out) either left_ext or right_ext.
             if self.embodiment_tag == EmbodimentTag.OXE_DROID and v >= 3:
-                # Randomly select one of the two exterior images (view 0 or view 1)
-                if self.training:
-                    selected_exterior_idx = random.choice([0, 1])
-                else:
-                    selected_exterior_idx = 0
-                selected_exterior = images[selected_exterior_idx]  # (t, c, h, w)
-                wrist_image = images[2]  # (t, c, h, w)
-                
-                # Create output tensor with doubled width (horizontal layout)
-                concat_images = np.zeros((1, t, c, h, 2*w), dtype=images.dtype)
-                
-                # Place selected exterior image on the left
-                concat_images[0, :, :, :, :w] = selected_exterior
-                
-                # Place wrist image on the right
-                concat_images[0, :, :, :, w:] = wrist_image
+                left_exterior = images[0]   # (t, c, h, w)
+                right_exterior = images[1]  # (t, c, h, w)
+                wrist_image = images[2]     # (t, c, h, w)
+
+                concat_images = np.zeros((1, t, c, 2 * h, 2 * w), dtype=images.dtype)
+
+                # Top row: a SINGLE wrist view, resized to be 2x wider (same height).
+                # We use nearest-neighbor upscaling by repeating pixels along width.
+                wrist_wide = np.repeat(wrist_image, 2, axis=-1)  # (t, c, h, 2w)
+                concat_images[0, :, :, :h, :] = wrist_wide
+
+                # # Bottom row: left/right exteriors.
+                # drop_exterior_idx = None
+                # if self.training:
+                #     # Always drop exactly one exterior view during training.
+                #     drop_exterior_idx = random.choice([0, 1])  # 0=left, 1=right
+
+                # if drop_exterior_idx != 0:
+                concat_images[0, :, :, h:, :w] = left_exterior
+                # if drop_exterior_idx != 1:
+                concat_images[0, :, :, h:, w:] = right_exterior
 
                 return concat_images
             

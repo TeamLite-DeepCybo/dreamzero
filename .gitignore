@@ -241,3 +241,5 @@ offline_open_loop_eval_plots/
 groot/control/envs/yam/data/eval/*
 /models
 /data
+
+checkpoints/

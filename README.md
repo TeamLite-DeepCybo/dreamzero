@@ -54,7 +54,7 @@ The outputs are saved in `runs` directory.
 - **Python**: 3.11
 - **Hardware**: Multi-GPU setup (tested on GB200, H100)
   - Minimum: 2 GPUs for distributed inference
-- **CUDA**: Compatible GPU with CUDA support
+- **CUDA**: Compatible GPU with CUDA 12.9+
 
 ### Installation
 
@@ -118,6 +118,84 @@ python test_client_AR.py --port 5000
 The server saves:
 - **Videos**: Generated video predictions as MP4 files in `{model_path}/real_world_eval_gen_{date}_{index}/{checkpoint_name}/`
 - **Input observations**: Saved per message in `{output_dir}/inputs/{msg_index}_{timestamp}/`
+
+
+## Training
+
+### Downloading Pretrained Base Model Weights
+
+DreamZero is built on top of [Wan2.1-I2V-14B-480P](https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P) and uses the [umt5-xxl](https://huggingface.co/google/umt5-xxl) tokenizer. Download both before training:
+
+```bash
+pip install "huggingface_hub[cli]"
+
+# You may need to set your HuggingFace token:
+# export HF_TOKEN=<YOUR_HUGGINGFACE_TOKEN>
+
+# Download Wan2.1 model weights (~28GB)
+hf download Wan-AI/Wan2.1-I2V-14B-480P --local-dir ./checkpoints/Wan2.1-I2V-14B-480P
+
+# Download umt5-xxl tokenizer
+hf download google/umt5-xxl --local-dir ./checkpoints/umt5-xxl
+```
+
+> **Note:** The training script will auto-download these if they are not found at the configured paths, but pre-downloading is recommended to avoid delays at launch.
+
+### DROID Dataset
+
+We release the preprocessed DROID dataset used to train DreamZero on HuggingFace: [GEAR-Dreams/DreamZero-DROID-Data](https://huggingface.co/datasets/GEAR-Dreams/DreamZero-DROID-Data).
+
+This dataset is derived from the [DROID 1.0.1](https://droid-dataset.github.io/) dataset with the following modifications:
+- Converted from RLDS/TFDS format to [LeRobot](https://github.com/huggingface/lerobot) v2.0 format
+- Idle frames removed using [Physical Intelligence's idle frame detector](https://github.com/Physical-Intelligence/openpi/blob/main/examples/droid/README_train.md#data-filtering) (`droid_sample_ranges_v1_0_1.json`)
+- Episodes without language annotations are filtered out
+- Successful episodes only (episodes with non-zero reward)
+- 3 camera views: `exterior_image_1_left`, `exterior_image_2_left`, `wrist_image_left`
+
+**To download the preprocessed dataset (~131GB):**
+
+```bash
+huggingface-cli download GEAR-Dreams/DreamZero-DROID-Data --repo-type dataset --local-dir ./data/droid_lerobot
+```
+
+If you want to reproduce the dataset conversion from raw DROID 1.0.1 yourself (or modify the filtering), see [docs/DROID_CONVERSION.md](docs/DROID_CONVERSION.md).
+
+### Running Training
+
+```bash
+# Configure paths (override defaults as needed)
+export DROID_DATA_ROOT="./data/droid_lerobot"
+export OUTPUT_DIR="./checkpoints/dreamzero_droid"
+export NUM_GPUS=4
+
+# Point to your downloaded model weights (if not using default paths)
+export WAN_CKPT_DIR="./checkpoints/Wan2.1-I2V-14B-480P"
+export TOKENIZER_DIR="./checkpoints/umt5-xxl"
+
+# Launch training
+bash scripts/train/droid_training.sh
+```
+
+### Training Configuration
+
+The training script uses Hydra for configuration and DeepSpeed ZeRO Stage 2 for distributed training. Key defaults:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `NUM_GPUS` | 4 | Number of GPUs |
+| `per_device_train_batch_size` | 1 | Batch size per GPU |
+| `learning_rate` | 1e-5 | Learning rate |
+| `max_steps` | 10 | Max training steps (increase for full training) |
+| `warmup_ratio` | 0.05 | Warmup ratio |
+| `weight_decay` | 1e-5 | Weight decay |
+| `image_resolution_width` | 320 | Image width |
+| `image_resolution_height` | 176 | Image height |
+| `num_frames` | 33 | Number of video frames |
+| `action_horizon` | 24 | Action prediction horizon |
+| `save_lora_only` | true | Only save LoRA weights |
+| `bf16` | true | Use bfloat16 precision |
+
+> **Note:** `max_steps=10` is set for a quick sanity check. For full training, increase this to your desired number of steps and configure `save_steps` / `save_strategy` accordingly.
 
 
 ## Citation

@@ -79,6 +79,10 @@ dependencies = [
     "tensorrt",
     "openpi-client==0.1.1",
     "huggingface_hub",
+    "decord2",
+    "deepspeed",
+    "tiktoken",
+    "sentencepiece"
 ]
 
 [project.optional-dependencies]
@@ -93,7 +97,7 @@ dreamzero-server = "socket_test_optimized_AR:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["dreamzero*"]
+include = ["groot*"]
 
 [tool.setuptools]
 include-package-data = true

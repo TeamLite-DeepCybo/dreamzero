@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import logging
 import time
 from typing import TypeAlias, cast
 import os
@@ -14,6 +15,25 @@ import torch.distributed as dist
 from torch.distributed.device_mesh import DeviceMesh
 from safetensors.torch import load_file
 import json
+from huggingface_hub import hf_hub_download
+
+
+logger = logging.getLogger(__name__)
+
+WAN_HF_REPO_ID = "Wan-AI/Wan2.1-I2V-14B-480P"
+
+
+def hf_download(filename: str) -> str:
+    """Download a file from the Wan2.1-I2V-14B-480P HuggingFace repo to HF cache."""
+    path = hf_hub_download(repo_id=WAN_HF_REPO_ID, filename=filename)
+    return path
+
+
+def ensure_file(path: str | None, hf_filename: str) -> str:
+    """Return a valid local path: use `path` if it exists, otherwise download from HuggingFace."""
+    if path is not None and os.path.exists(path):
+        return path
+    return hf_download(hf_filename)
 
 from torch.distributions import Beta
 import torch.distributed as dist
@@ -179,8 +199,7 @@ class WANPolicyHead(ActionHead):
         self.ip_group = None
         
         self._device = "cuda"
-        self.dynamic_cache_schedule = os.getenv("DYNAMIC_CACHE_SCHEDULE", "False").lower() == "true" 
-        print(f"Dynamic cache schedule: {self.dynamic_cache_schedule}")
+        self.dynamic_cache_schedule = os.getenv("DYNAMIC_CACHE_SCHEDULE", "False").lower() == "true"
 
 
         num_dit_steps = 8
@@ -195,9 +214,7 @@ class WANPolicyHead(ActionHead):
         elif num_dit_steps == 8:
             self.dit_step_mask = [True, True, True, False, False, False, True, False, False, False, True, False, False, True, True, True]
         else:
-            print(f"Invalid number of DIT steps: {num_dit_steps}, using full cache schedule")
             self.dit_step_mask = [True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True]
-        print(f"DIT step mask: {self.dit_step_mask}, num_inference_steps: {self.num_inference_steps}")
         assert self.dit_step_mask[0] == True, "first step must be True"
 
         self.normalize_video = v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
@@ -217,24 +234,37 @@ class WANPolicyHead(ActionHead):
         self.action_horizon = config.action_horizon
         self.num_inference_timesteps = config.num_inference_timesteps
         
-        if self.text_encoder.text_encoder_pretrained_path is not None:
-            print("Loading text encoder from ", self.text_encoder.text_encoder_pretrained_path)
-            self.text_encoder.load_state_dict(torch.load(self.text_encoder.text_encoder_pretrained_path, map_location='cpu'))
+        text_enc_path = ensure_file(
+            self.text_encoder.text_encoder_pretrained_path,
+            "models_t5_umt5-xxl-enc-bf16.pth",
+        )
+        self.text_encoder.load_state_dict(torch.load(text_enc_path, map_location='cpu'))
 
-        if self.image_encoder.image_encoder_pretrained_path is not None:
-            print("Loading image encoder from ", self.image_encoder.image_encoder_pretrained_path)
-            self.image_encoder.model.load_state_dict(torch.load(self.image_encoder.image_encoder_pretrained_path, map_location='cpu'), strict=False)
-            print("Image encoder loaded")
+        img_enc_path = ensure_file(
+            self.image_encoder.image_encoder_pretrained_path,
+            "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+        )
+        self.image_encoder.model.load_state_dict(torch.load(img_enc_path, map_location='cpu'), strict=False)
 
-        if self.vae.vae_pretrained_path is not None:
-            print("Loading vae from ", self.vae.vae_pretrained_path)
-            self.vae.model.load_state_dict(torch.load(self.vae.vae_pretrained_path, map_location='cpu'))
+        vae_path = ensure_file(
+            self.vae.vae_pretrained_path,
+            "Wan2.1_VAE.pth",
+        )
+        self.vae.model.load_state_dict(torch.load(vae_path, map_location='cpu'))
 
-        if not config.skip_component_loading:   
-            if self.model.diffusion_model_pretrained_path is not None:
-                print("Loading model from ", self.model.diffusion_model_pretrained_path)
-                safetensors_path = os.path.join(self.model.diffusion_model_pretrained_path, "diffusion_pytorch_model.safetensors")
-                safetensors_index_path = os.path.join(self.model.diffusion_model_pretrained_path, "diffusion_pytorch_model.safetensors.index.json")
+        if not config.skip_component_loading:
+            dit_dir = self.model.diffusion_model_pretrained_path
+            if dit_dir is None or not os.path.isdir(dit_dir):
+                index_path = hf_hub_download(repo_id=WAN_HF_REPO_ID, filename="diffusion_pytorch_model.safetensors.index.json")
+                dit_dir = os.path.dirname(index_path)
+                with open(index_path, 'r') as f:
+                    index = json.load(f)
+                for shard_file in set(index["weight_map"].values()):
+                    hf_hub_download(repo_id=WAN_HF_REPO_ID, filename=shard_file)
+
+            if dit_dir is not None:
+                safetensors_path = os.path.join(dit_dir, "diffusion_pytorch_model.safetensors")
+                safetensors_index_path = os.path.join(dit_dir, "diffusion_pytorch_model.safetensors.index.json")
                 state_dict = {}
 
                 if os.path.exists(safetensors_index_path):
@@ -246,7 +276,7 @@ class WANPolicyHead(ActionHead):
 
                     # Load each shard
                     for shard_file in set(index["weight_map"].values()):
-                        shard_path = os.path.join(self.model.diffusion_model_pretrained_path, shard_file)
+                        shard_path = os.path.join(dit_dir, shard_file)
                         print(f"Loading shard: {shard_path}")
                         shard_state_dict = load_file(shard_path)
                         state_dict.update(shard_state_dict)
@@ -267,14 +297,6 @@ class WANPolicyHead(ActionHead):
                     print(f"Unexpected keys when loading pretrained weights: {unexpected_keys}")
 
                 print("Successfully loaded pretrained weights")
-                # self.model = load_checkpoint_and_dispatch(
-                #     self.model,
-                #     checkpoint=self.model.diffusion_model_pretrained_path,
-                #     device_map="auto",
-                #     dtype=torch.bfloat16,
-                #     offload_state_dict=True,  # Enable this to save more CPU RAM
-                # )
-                # print("Successfully loaded pretrained weights")
         else:
             print("Skipping individual component loading (loading from full pretrained model)")
         self.beta_dist = Beta(config.noise_beta_alpha, config.noise_beta_beta)
@@ -306,9 +328,6 @@ class WANPolicyHead(ActionHead):
         if not any(p.requires_grad for p in self.parameters()):
             print("Warning: No action head trainable parameters found.")
 
-        # if self.freeze_decode_layer:
-        #     self.decode_layer.requires_grad_(False)
-        
         if self.train_architecture == "lora" and not self.defer_lora_injection:
             print("Adding LoRA to model")
             for p in self.parameters():
@@ -323,8 +342,6 @@ class WANPolicyHead(ActionHead):
             self.model.state_encoder.requires_grad_(True)
             self.model.action_encoder.requires_grad_(True)
             self.model.action_decoder.requires_grad_(True)
-            # self.model.registers.requires_grad_(True)
-            # self.model.time_modality_projection.requires_grad_(True)
         elif self.train_architecture == "lora" and self.defer_lora_injection:
             print("Deferring LoRA injection until after pretrained weights are loaded")
         else:
@@ -502,9 +519,7 @@ class WANPolicyHead(ActionHead):
         return BatchFeature(data=batch)
 
     def preprocess_image(self, image):
-        # image = (image * (2 / 255) - 1).permute(2, 0, 1).unsqueeze(0)
         image = (image * (2 / 255) - 1).permute(0, 1, 4, 2, 3)
-        # print(f"image: {image[0,0,230,400:405], image.shape}")
         return image
 
     def encode_prompt(self, input_ids, attention_mask):
@@ -599,8 +614,6 @@ class WANPolicyHead(ActionHead):
         _, _, num_frames, height, width = videos.shape
         image = videos[:, :, :1].transpose(1, 2)
 
-        # clip feas shape of B * 257 * dim (1280)
-        # ys shape of B * 20 * (1+(T-1)/4) * h/8 * w/8
         clip_feas, ys, _ = self.encode_image(image, num_frames, height, width)
 
         latents = latents.to(self._device)
@@ -679,7 +692,6 @@ class WANPolicyHead(ActionHead):
         seq_len = num_frames * frame_seqlen
 
         timestep = self.scheduler.timesteps[timestep_id].to(self._device)
-        # print("latents with time", latents.shape, noise.shape, timestep.shape, timestep)
         noisy_latents = self.scheduler.add_noise(latents.flatten(0, 1), noise.flatten(0, 1), timestep.flatten(0, 1)).unflatten(0, (noise.shape[0], noise.shape[1]))
         training_target = self.scheduler.training_target(latents, noise, timestep).transpose(1, 2)
         
@@ -695,13 +707,6 @@ class WANPolicyHead(ActionHead):
             timestep_action = None
             noisy_actions = None
             training_target_action = None
-        # print("training_target_action", training_target_action.shape)
-
-        # rand_state = torch.randn_like(state_features)
-        # if self.global_step < self.max_steps:
-        #     # print("injecting noise to state", self.global_step, self.global_step / self.max_steps)
-        #     state_features = rand_state * (1 - self.global_step / self.max_steps) + state_features * (self.global_step / self.max_steps)
-
 
         # Compute loss
         with torch.amp.autocast(dtype=torch.bfloat16, device_type=torch.device(self._device).type):

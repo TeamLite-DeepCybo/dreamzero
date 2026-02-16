@@ -18,7 +18,6 @@ ERROR_MSG = "Error: unexpected input/output"
 N_COLOR_CHANNELS = 3
 
 
-# config
 @dataclass
 class VLAConfig(PretrainedConfig):
     model_type = "vla"
@@ -41,7 +40,6 @@ class VLAConfig(PretrainedConfig):
             setattr(self, key, value)
 
 
-# real model
 class VLA(PreTrainedModel):
     supports_gradient_checkpointing = True
     config_class = VLAConfig
@@ -69,9 +67,6 @@ class VLA(PreTrainedModel):
         self.rank = dist.get_rank() if dist.is_initialized() else 0
 
     def validate_inputs(self, inputs):
-        # NOTE -- this should be handled internally by the model
-        # however, doing that will likely be breaking changes -- so we'll need to do it after the deadline
-
         detected_error = False
         error_msg = ERROR_MSG
         if "action" in inputs:
@@ -149,9 +144,6 @@ class VLA(PreTrainedModel):
         backbone_inputs, action_inputs = self.prepare_input(inputs)
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head(backbone_outputs, action_inputs)
-        # self.validate_data(action_head_outputs, backbone_outputs, is_training=True)
-
-        print(f"[RANK {self.rank} HEARTBEAT] Forward done")
 
         return action_head_outputs
 
@@ -160,7 +152,6 @@ class VLA(PreTrainedModel):
         inputs: dict,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.get_action(backbone_outputs, action_inputs)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -171,7 +162,6 @@ class VLA(PreTrainedModel):
         inputs: dict,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.joint_video_action(backbone_outputs, action_inputs)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -182,7 +172,6 @@ class VLA(PreTrainedModel):
         inputs: dict,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.lazy_joint_video_action(backbone_outputs, action_inputs)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -194,7 +183,6 @@ class VLA(PreTrainedModel):
         latent_video: torch.Tensor | None = None,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.lazy_joint_video_action(backbone_outputs, action_inputs, latent_video=latent_video)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -206,7 +194,6 @@ class VLA(PreTrainedModel):
         latent_video: torch.Tensor | None = None,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
 
         action_head_outputs = self.action_head.lazy_joint_video_action_causal_gt_cond(backbone_outputs, action_inputs, latent_video=latent_video)
@@ -220,7 +207,6 @@ class VLA(PreTrainedModel):
         prompt_emb_nega: torch.Tensor | None = None,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.lazy_joint_video_action_efficient(backbone_outputs, action_inputs, prompt_embs=prompt_embs, prompt_emb_nega=prompt_emb_nega)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -231,7 +217,6 @@ class VLA(PreTrainedModel):
         inputs: dict,
     ) -> BatchFeature:
         backbone_inputs, action_inputs = self.prepare_input(inputs)
-        # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone(backbone_inputs)
         action_head_outputs = self.action_head.gt_video_action_pred(backbone_outputs, action_inputs)
         self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
@@ -244,9 +229,6 @@ class VLA(PreTrainedModel):
         backbone_inputs, action_inputs = self.prepare_input(inputs)
         # Because the behavior of backbones remains the same for training and inference, we can use `forward` for backbones.
         backbone_outputs = self.backbone.generate(backbone_inputs)
-        print("backbone_outputs", backbone_outputs)
-        # action_head_outputs = self.action_head.get_action(backbone_outputs, action_inputs)
-        # self.validate_data(action_head_outputs, backbone_outputs, is_training=False)
         return backbone_outputs
 
     def get_video(
@@ -285,7 +267,6 @@ class VLA(PreTrainedModel):
         offload_state_dict: bool = True,
         lora_weights_path: str | None = None,
     ):
-        # Safety check: ensure a config was actually passed
         if config is None:
             raise ValueError(
                 "A `config` object must be provided to build the model structure."
@@ -293,22 +274,15 @@ class VLA(PreTrainedModel):
 
         import os
         import json
-        print("Loading pretrained weights for tuning...")
-        
+        import gc
+        from safetensors.torch import load_file
+
         model = cls(config)
 
-        from safetensors.torch import load_file
-        import os
-        import json
-        import gc
-        print("Loading pretrained state dict from safetensors (manual, memory-efficient)...")
-        # Check for different checkpoint formats
         safetensors_path = os.path.join(pretrained_model_name_or_path, "model.safetensors")
         safetensors_index_path = os.path.join(pretrained_model_name_or_path, "model.safetensors.index.json")
 
         if os.path.exists(safetensors_index_path):
-            # Handle sharded safetensors: stream each shard into the model to avoid holding all weights
-            print(f"Streaming sharded safetensors using index: {safetensors_index_path}")
             with open(safetensors_index_path, 'r') as f:
                 index = json.load(f)
             missing_keys_accum = set()

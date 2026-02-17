@@ -1,9 +1,8 @@
 #!/bin/bash
-# DreamZero DROID Training Script
+# DreamZero DROID Full Fine-Tuning Script (8x H100, ZeRO Stage 3)
 #
 # Usage:
-#   # Set your dataset path and output directory, then run:
-#   bash scripts/train/droid_training.sh
+#   bash scripts/train/droid_training_full_finetune.sh
 #
 # Prerequisites:
 #   - DROID dataset in LeRobot format at DROID_DATA_ROOT
@@ -18,13 +17,12 @@ export HYDRA_FULL_ERROR=1
 
 # ============ USER CONFIGURATION ============
 # Dataset path (DROID in LeRobot format)
-#DROID_DATA_ROOT=${DROID_DATA_ROOT:-"./data/droid_lerobot"}
 DROID_DATA_ROOT=${DROID_DATA_ROOT:-"/mnt/amlfs-02/shared/datasets/droid_101_success_idlefiltered6"}
 
 # Output directory for training checkpoints
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_droid_lora"}
+OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_droid_full_finetune"}
 
-# Number of GPUs to use
+# Number of GPUs to use (8x H100 for ZeRO3 full fine-tuning)
 NUM_GPUS=${NUM_GPUS:-8}
 
 # Model weight paths (download from HuggingFace if not already present)
@@ -55,7 +53,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     report_to=none \
     data=dreamzero/droid_relative \
     wandb_project=dreamzero \
-    train_architecture=lora \
+    train_architecture=full \
     num_frames=33 \
     action_horizon=24 \
     num_views=3 \
@@ -67,7 +65,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     num_state_per_block=1 \
     seed=42 \
     training_args.learning_rate=1e-5 \
-    training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
+    training_args.deepspeed="groot/vla/configs/deepspeed/zero3.json" \
     save_steps=1000 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
@@ -83,7 +81,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     dataloader_num_workers=1 \
     image_resolution_width=320 \
     image_resolution_height=176 \
-    save_lora_only=true \
+    save_lora_only=false \
     max_chunk_size=4 \
     frame_seqlen=880 \
     save_strategy=no \

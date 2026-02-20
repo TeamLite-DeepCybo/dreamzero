@@ -80,6 +80,24 @@ LAYERNORM_LAYERS = [
 ]
 
 
+class LossLoggerCallback(TrainerCallback):
+    """Callback that writes per-step loss metrics to a JSONL file for offline analysis."""
+
+    def __init__(self, output_path: str):
+        self.output_path = output_path
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        if not state.is_world_process_zero or logs is None:
+            return
+        entry = {"step": state.global_step}
+        for key in ("loss", "dynamics_loss_avg", "action_loss_avg", "learning_rate"):
+            if key in logs:
+                entry[key] = logs[key]
+        if len(entry) > 1:  # more than just "step"
+            with open(self.output_path, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+
+
 class CheckpointFormatCallback(TrainerCallback):
     """This callback format checkpoint to make them standalone. For now, it copies all config
     files to /checkpoint-{step}/experiment_cfg/:
@@ -752,6 +770,9 @@ class BaseExperiment(ABC):
         run_name = cfg.training_args.get("run_name", None)
         ckpt_format_callback = CheckpointFormatCallback(run_name=run_name, exp_cfg_dir=exp_cfg_dir)
         trainer.add_callback(ckpt_format_callback)
+
+        loss_log_path = str(Path(training_args.output_dir) / "loss_log.jsonl")
+        trainer.add_callback(LossLoggerCallback(output_path=loss_log_path))
 
         # Add profiling callback (local profiling only, no S3 upload)
         # Local: {output_dir}/profiling/rank_{id}/*.pt.trace.json

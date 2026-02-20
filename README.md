@@ -13,9 +13,9 @@ DreamZero is a World Action Model that jointly predicts actions and videos, achi
 - [RoboArena](https://robo-arena.github.io/) integration (DROID real)
 - Video generation and saving (MP4)
 - **New 02/16:** LoRA training script for DreamZero on DROID dataset (H100)
-
+- **New 02/20:** Full fine-tuning support on H100 & GB200
+  
 **Coming Soon**
-- Full fine-tuning support on H100 & GB200
 - DreamZero training script on new embodiment (e.g. YAM)
 - [PolaRiS](https://polaris-evals.github.io/) simulation environment support
 - [Genie 3.0](https://arxiv.org/abs/2601.02078) sim environment support

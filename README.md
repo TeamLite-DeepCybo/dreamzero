@@ -205,12 +205,14 @@ The training script uses Hydra for configuration and DeepSpeed ZeRO Stage 2 for 
 If you use DreamZero in your research, please cite:
 
 ```bibtex
-@misc{dreamzero2025,
-  title={DreamZero: World Action Models Are Zero-Shot Policies},
-  author={NVIDIA GEAR},
-  howpublished={\url{https://dreamzero0.github.io/}},
-  year={2026},
-  note={Project Website}
+@misc{ye2026worldactionmodelszeroshot,
+      title={World Action Models are Zero-shot Policies}, 
+      author={Seonghyeon Ye and Yunhao Ge and Kaiyuan Zheng and Shenyuan Gao and Sihyun Yu and George Kurian and Suneel Indupuru and You Liang Tan and Chuning Zhu and Jiannan Xiang and Ayaan Malik and Kyungmin Lee and William Liang and Nadun Ranawaka and Jiasheng Gu and Yinzhen Xu and Guanzhi Wang and Fengyuan Hu and Avnish Narayan and Johan Bjorck and Jing Wang and Gwanghyun Kim and Dantong Niu and Ruijie Zheng and Yuqi Xie and Jimmy Wu and Qi Wang and Ryan Julian and Danfei Xu and Yilun Du and Yevgen Chebotar and Scott Reed and Jan Kautz and Yuke Zhu and Linxi "Jim" Fan and Joel Jang},
+      year={2026},
+      eprint={2602.15922},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2602.15922}, 
 }
 ```
 

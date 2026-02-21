@@ -41,7 +41,7 @@ class DreamZeroJointPosClient(InferenceClient):
     def __init__(self, 
                 remote_host:str = "localhost", 
                 remote_port:int = 6000,
-                open_loop_horizon:int = 24,
+                open_loop_horizon:int = 8,
     ) -> None:
         self.client = WebsocketClientPolicy(remote_host, remote_port)
         self.open_loop_horizon = open_loop_horizon
@@ -88,7 +88,7 @@ class DreamZeroJointPosClient(InferenceClient):
             for k, v in request_data.items():
                 print(f"{k}: {v.shape if not isinstance(v, str) else v}")
             
-            actions = self.client.infer(request_data)["actions"]
+            actions = self.client.infer(request_data)
             assert len(actions.shape) == 2, f"Expected 2D array, got shape {actions.shape}"
             assert actions.shape[-1] == 8, f"Expected 8 action dimensions (7 joints + 1 gripper), got {actions.shape[-1]}"
             self.pred_action_chunk = actions

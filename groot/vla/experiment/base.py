@@ -690,14 +690,43 @@ class BaseExperiment(ABC):
         self.trainer = trainer
 
     def create_model(self, cfg, training_args):
-        # if cfg.pretrained_model_path is not None:
-        #     print("loading model from pretrained_model_path", cfg.pretrained_model_path)
-        #     model = AutoModel.from_pretrained(cfg.pretrained_model_path)
-        #     # NOTE -- these must match, causes downstream issues otherwise
-        #     # cfg_from_cli = instantiate(cfg.model.config, _convert_="object")
-        #     # cfg_from_model = model.config
-        # else:
         model = instantiate(cfg.model)
+
+        if cfg.pretrained_model_path is not None:
+            mprint(f"Loading pretrained weights from: {cfg.pretrained_model_path}")
+            import json, gc
+            from safetensors.torch import load_file
+
+            ckpt_dir = cfg.pretrained_model_path
+            safetensors_index_path = os.path.join(ckpt_dir, "model.safetensors.index.json")
+            safetensors_path = os.path.join(ckpt_dir, "model.safetensors")
+
+            if os.path.exists(safetensors_index_path):
+                with open(safetensors_index_path, 'r') as f:
+                    index = json.load(f)
+                for shard_file in sorted(set(index["weight_map"].values())):
+                    shard_path = os.path.join(ckpt_dir, shard_file)
+                    mprint(f"Loading shard: {shard_path}")
+                    shard_state_dict = load_file(shard_path)
+                    model.load_state_dict(shard_state_dict, strict=False)
+                    del shard_state_dict
+                    gc.collect()
+            elif os.path.exists(safetensors_path):
+                state_dict = load_file(safetensors_path)
+                model.load_state_dict(state_dict, strict=False)
+            else:
+                raise FileNotFoundError(
+                    f"No weights found at '{ckpt_dir}'. "
+                    "Expected 'model.safetensors' or 'model.safetensors.index.json'."
+                )
+
+            if (hasattr(model, 'action_head')
+                    and hasattr(model.action_head, 'inject_lora_after_loading')
+                    and model.action_head.config.defer_lora_injection):
+                model.action_head.inject_lora_after_loading()
+
+            mprint("Successfully loaded pretrained weights")
+
         model.config.resume_path = model.config._name_or_path = training_args.output_dir
         mprint(f"{model}\n")
         return model

@@ -153,6 +153,8 @@ class EmbodimentTag(Enum):
     """
     AGIBOT = "agibot"
 
+    YAM = "yam"
+
     DREAM = "dream"
     """
     The datasets with DREAM actions.

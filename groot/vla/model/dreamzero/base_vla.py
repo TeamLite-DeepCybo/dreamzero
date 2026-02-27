@@ -376,39 +376,29 @@ class VLA(PreTrainedModel):
         config = VLAConfig(**config_dict)
         print("loading model")
 
-        # Instantiate model
+        # Disable defer_lora_injection so LoRA layers are created during init,
+        # matching the PEFT key hierarchy (base_model.model.*) in the checkpoint.
+        ah_cfg = config.action_head_cfg
+        inner = ah_cfg.get('config', ah_cfg) if isinstance(ah_cfg.get('config'), dict) else ah_cfg
+        if 'defer_lora_injection' in inner:
+            inner['defer_lora_injection'] = False
+            print("defer_lora_injection disabled for load_lora")
+        # Enable component loading so DiT base weights are loaded from pretrained
+        if 'skip_component_loading' in inner:
+            inner['skip_component_loading'] = False
+            print("skip_component_loading disabled for load_lora")
+
+        # Instantiate model (LoRA layers now exist from init)
         model = cls(config)
 
-        print("model", model)
-        
-        print("main network", model.action_head.model.blocks[8].cross_attn.k.weight.shape, model.action_head.model.blocks[8].cross_attn.k.weight[0,0:10])
-        print("lora weight before", model.action_head.model.blocks[8].self_attn.k.lora_A.default.weight[0,0:10])
-
-        # Rewrite keys for loading the LoRA weights due to PEFT wrapping.
-        # If a model is PEFT wrapped, the module hierarchy is changed by the PEFT library.
-        def rewrite_lora_state_dict_keys(state_dict, pattern, repl):
-            new_state_dict = {}
-            for k, v in state_dict.items():
-                new_k = k.replace(pattern, repl)
-                new_state_dict[new_k] = v
-            return new_state_dict
-
-        has_target_pattern = any("action_head.model.base_model.model" in key for key in state_dict.keys())
-        
-        if not has_target_pattern:
-            print("Rewriting LoRA state dict keys from 'action_head.model' to 'action_head.model.base_model.model'")
-            state_dict = rewrite_lora_state_dict_keys(
-                state_dict,
-                pattern="action_head.model",
-                repl="action_head.model.base_model.model",
-            )
-        else:
-            print("State dict already has 'action_head.model.base_model.model' pattern, skipping key rewrite")
+        # Remove .base_layer from keys if present
+        has_base_layer = any(".base_layer." in key for key in state_dict.keys())
+        if has_base_layer:
+            print("Removing '.base_layer' from state dict keys")
+            state_dict = {k.replace(".base_layer.", "."): v for k, v in state_dict.items()}
 
         # Load weights
         missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-        print("main network after", model.action_head.model.blocks[8].cross_attn.k.weight.shape, model.action_head.model.blocks[8].cross_attn.k.weight[0,0:10])
-        print("lora weight", model.action_head.model.blocks[8].self_attn.k.lora_A.default.weight[0,0:10])
             
         if missing_keys:
             print(f"Missing keys when loading pretrained weights: {missing_keys}")
@@ -455,8 +445,6 @@ class VLA(PreTrainedModel):
             raise FileNotFoundError(f"No valid checkpoint found at {pretrained_model_name_or_path}")
         
         print("Loading LoRA weights into existing model")
-        print("Before loading - LoRA weight sample:", 
-              self.action_head.model.blocks[8].self_attn.k.lora_A.default.weight[0,0:10])
 
         def rewrite_lora_state_dict_keys(state_dict, pattern, repl):
             new_state_dict = {}
@@ -480,8 +468,7 @@ class VLA(PreTrainedModel):
         # Load only the weights into the existing model
         missing_keys, unexpected_keys = self.load_state_dict(state_dict, strict=False)
         
-        print("After loading - LoRA weight sample:", 
-              self.action_head.model.blocks[8].self_attn.k.lora_A.default.weight[0,0:10])
+        print("Successfully loaded LoRA state dict")
             
         if missing_keys:
             print(f"Missing keys when loading LoRA weights: {missing_keys}")

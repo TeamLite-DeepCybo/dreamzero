@@ -32,6 +32,7 @@ embodiment_tag_to_projector_index:
   oxe_roboset: 29
   oxe_plex: 30
   dream: 31
+  yam: 32
   xdof: 22
   gr1_unified_segmentation: 14
   language_table_sim: 7

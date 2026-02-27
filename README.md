@@ -5,7 +5,7 @@ DreamZero is a World Action Model that jointly predicts actions and videos, achi
 
 ## News
 
-- **02/27:** DreamZero is **#1 on both [MolmoSpaces](https://huggingface.co/spaces/ai2-adapt/MolmoSpaces) and [RoboArena](https://robo-arena.github.io/)**! DreamZero-DROID is trained *from scratch* using only the DROID dataset — no pretraining on large-scale robot data, unlike competing VLAs. This demonstrates the strength of video-model backbones for generalist robot policies (VAMs/WAMs). Training only on real data and evaluating on transparent, distributed benchmarks like RoboArena or scalable sim-benchmarks like MolmoSpaces is an exciting step toward fairer and more reproducible evaluation of generalist policies.
+- **02/27:** DreamZero is **#1 on both [MolmoSpaces](https://huggingface.co/spaces/ai2-adapt/MolmoSpaces) and [RoboArena](https://robo-arena.github.io/)**! DreamZero-DROID is trained *from scratch* using only the DROID dataset — no pretraining on large-scale robot data, unlike competing VLAs. This demonstrates the strength of video-model backbones for generalist robot policies (VAMs/WAMs).
 - **02/27:** Released **DreamZero-AgiBot checkpoint** and **post-training code** for efficient few-shot adaptation. Post-train on just ~30 minutes of play data for your specific robot, and see the robot do basic language following and pick-and-place (see YAM experiments in our paper for more detail).
 - **02/20:** Released the **full training codebase, preprocessed dataset, and guide for new embodiments** to replicate the DreamZero-DROID checkpoint and train on your own robot. See [Adding a New Embodiment to DreamZero](docs/DATASET_TO_GEAR_AND_TRAIN.md) for a step-by-step walkthrough.
 

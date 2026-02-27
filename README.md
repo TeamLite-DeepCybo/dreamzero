@@ -3,6 +3,12 @@
 
 DreamZero is a World Action Model that jointly predicts actions and videos, achieving strong zero-shot performance on unseen tasks. This release package contains everything needed to load a pretrained DreamZero model and run distributed inference via a WebSocket server.
 
+## News
+
+- **02/27:** DreamZero is **#1 on both [MolmoSpaces](https://huggingface.co/spaces/ai2-adapt/MolmoSpaces) and [RoboArena](https://robo-arena.github.io/)**! DreamZero-DROID is trained *from scratch* using only the DROID dataset — no pretraining on large-scale robot data, unlike competing VLAs. This demonstrates the strength of video-model backbones for generalist robot policies (VAMs/WAMs). Training only on real data and evaluating on transparent, distributed benchmarks like RoboArena or scalable sim-benchmarks like MolmoSpaces is an exciting step toward fairer and more reproducible evaluation of generalist policies.
+- **02/27:** Released **DreamZero-AgiBot checkpoint** and **post-training code** for efficient few-shot adaptation. Post-train on just ~30 minutes of play data for your specific robot, and see the robot do basic language following and pick-and-place (see YAM experiments in our paper for more detail).
+- **02/20:** Released the **full training codebase, preprocessed dataset, and guide for new embodiments** to replicate the DreamZero-DROID checkpoint and train on your own robot. See [Adding a New Embodiment to DreamZero](docs/DATASET_TO_GEAR_AND_TRAIN.md) for a step-by-step walkthrough.
+
 ## Features
 
 **Available Now**
@@ -12,13 +18,12 @@ DreamZero is a World Action Model that jointly predicts actions and videos, achi
 - DROID simulation evaluation support
 - [RoboArena](https://robo-arena.github.io/) integration (DROID real)
 - Video generation and saving (MP4)
-- **New 02/16:** LoRA training script for DreamZero, with preprocessed DROID dataset
-- **New 02/20:** Full fine-tuning support
-  
+- LoRA and full fine-tuning training scripts
+- Training on new embodiments (AgiBot, YAM) — see [guide](docs/DATASET_TO_GEAR_AND_TRAIN.md)
+
 **Coming Soon**
-- DreamZero training script on new embodiment (e.g. YAM)
 - [PolaRiS](https://polaris-evals.github.io/) simulation environment support
-- [Genie 3.0](https://arxiv.org/abs/2601.02078) sim environment support
+- [Genie 3.0](https://arxiv.org/abs/2601.02078) sim environment support for DreamZero-AgiBot
 
 ## Testing Out DreamZero in Simulation with API
 We provide an inference script that directly evaluates a hosted DreamZero-DROID policy on [`sim_evals`](https://github.com/arhanjain/sim-evals). To test out the policy, first request access to the API via this form [link](https://forms.gle/zCj5zjDvHsoeuMXU7). Then, follow these instructions to install [`sim_evals`](https://github.com/arhanjain/sim-evals) and launch evaluation.
@@ -123,6 +128,8 @@ The server saves:
 
 
 ## Training
+
+> **Training on a new embodiment?** See [Adding a New Embodiment to DreamZero](docs/DATASET_TO_GEAR_AND_TRAIN.md) for a complete guide on converting your dataset, configuring modalities, and launching training.
 
 ### Downloading Pretrained Base Model Weights
 

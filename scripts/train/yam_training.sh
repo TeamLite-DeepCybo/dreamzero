@@ -19,10 +19,10 @@ export HYDRA_FULL_ERROR=1
 
 # ============ CHANGE THESE VARIABLES ============
 # Dataset path (YAM in LeRobot format: state 14, action 14, videos top, left, right)
-YAM_DATA_ROOT=${YAM_DATA_ROOT:-"/mnt/aws-lfs-02/shared/kazheng/dreamzero/Dataset/YAM_play_data"}
+YAM_DATA_ROOT=${YAM_DATA_ROOT:-"/mnt/aws-lfs-02/shared/kazheng/dreamzero/Dataset/folding_YAM"}
 
 # Output directory for training checkpoints
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_yam_lora_test_without_pretrained"}
+OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_yam_lora_dz_pretrained_100k_folding"}
 
 # Number of GPUs to use (default: all visible GPUs, so 4-GPU machines use 4 without setting NUM_GPUS)
 if [ -z "${NUM_GPUS}" ]; then
@@ -71,11 +71,11 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     seed=42 \
     training_args.learning_rate=1e-5 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
-    save_steps=100 \
+    save_steps=10000 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
-    per_device_train_batch_size=1 \
-    max_steps=100 \
+    per_device_train_batch_size=4 \
+    max_steps=100000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
     upload_checkpoints=false \
@@ -96,6 +96,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     image_encoder_pretrained_path=$WAN_CKPT_DIR/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth \
     vae_pretrained_path=$WAN_CKPT_DIR/Wan2.1_VAE.pth \
     tokenizer_path=$TOKENIZER_DIR \
+    # Load pretrained weights from DreamZero
     #pretrained_model_path=./checkpoints/dz_pretrained/copy-ckpt-50000 \
     #++action_head_cfg.config.skip_component_loading=true \
     #++action_head_cfg.config.defer_lora_injection=true

@@ -12,7 +12,7 @@ DreamZero is a World Action Model that jointly predicts actions and videos, achi
 ## Features
 
 **Available Now**
-- Pretrained DreamZero-DROID model checkpoint
+- Pretrained DreamZero-DROID model checkpoint [Huggingface](https://huggingface.co/GEAR-Dreams/DreamZero-DROID)
 - Distributed WebSocket inference server (GB200, H100)
 - DiT caching for optimized inference (~0.6s on GB200, ~3s on H100)
 - DROID simulation evaluation support

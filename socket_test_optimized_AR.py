@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 class Args:
     port: int = 8000
     timeout_seconds: int = 50000  # 10 hours default, configurable
-    model_path: str = "/mnt/aws-lfs-01/shared/seonghyeony/checkpoints/dreamzero/1105/wan_action_train_i2v_multiview_agibot_diverse_subtask_subsampling_action_OTJ_1104_steps100000_gpus128_bs128_per_device1_shared_time_multiview/copy-ckpt-26000"
+    model_path: str = "./checkpoints/dreamzero"
     enable_dit_cache: bool = False
     index: int = 0
     max_chunk_size: int | None = None  # If None, use config value. Otherwise override max_chunk_size for inference.

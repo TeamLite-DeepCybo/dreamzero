@@ -17,7 +17,7 @@ export HYDRA_FULL_ERROR=1
 
 # ============ USER CONFIGURATION ============
 # Dataset path (DROID in LeRobot format)
-DROID_DATA_ROOT=${DROID_DATA_ROOT:-"/mnt/amlfs-02/shared/datasets/droid_101_success_idlefiltered6"}
+DROID_DATA_ROOT=${DROID_DATA_ROOT:-"./data/droid_lerobot"}
 
 # Output directory for training checkpoints
 OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_droid_full_finetune"}

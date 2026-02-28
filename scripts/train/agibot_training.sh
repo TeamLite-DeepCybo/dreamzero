@@ -7,7 +7,7 @@
 #
 # Prerequisites:
 #   - AGIbot dataset in LeRobot format at AGIBOT_DATA_ROOT (state 32, action 22, 3 views: top_head, hand_left, hand_right)
-#     Example: /mnt/aws-lfs-02/shared/kazheng/dreamzero/Dataset/3222_raw_assemble
+#     See docs/DATASET_TO_GEAR_AND_TRAIN.md for conversion instructions
 #   - Wan2.1-I2V-14B-480P weights (auto-downloaded or pre-downloaded from HuggingFace)
 #     Download: huggingface-cli download Wan-AI/Wan2.1-I2V-14B-480P --local-dir ./checkpoints/Wan2.1-I2V-14B-480P
 #   - umt5-xxl tokenizer (auto-downloaded or pre-downloaded from HuggingFace)
@@ -17,7 +17,7 @@ export HYDRA_FULL_ERROR=1
 
 # ============ CHANGE THESE VARIABLES ============
 # Dataset path (AGIbot in LeRobot format: state 32, action 22, videos top_head, hand_left, hand_right)
-AGIBOT_DATA_ROOT=${AGIBOT_DATA_ROOT:-"/mnt/aws-lfs-02/shared/kazheng/dreamzero/Dataset/0223_assem"}
+AGIBOT_DATA_ROOT=${AGIBOT_DATA_ROOT:-"./data/agibot_lerobot"}
 
 # Output directory for training checkpoints
 OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_agibot_lora_5k"}

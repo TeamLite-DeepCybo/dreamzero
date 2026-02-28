@@ -109,52 +109,20 @@ def load_initial_actions(initial_actions_path: str | Path):
 
 
 if __name__ == "__main__":
-    data_dirs = [
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_only_v1/datasets/real_gr1_arms_only_annotated:gr00t004_1dragonfruit1plate0distractor_Res256Freq20",
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_only_v1/datasets/real_gr1_arms_only_annotated:gr00t004_1dragonfruit1plate2distractor_Res256Freq20",
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_only_v1/datasets/real_gr1_arms_only_annotated:gr00t006_1apple1shelf0distractor_Res256Freq20",
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_only_v1/datasets/real_gr1_arms_only_annotated:gr00t006_1cube1basket0distractor_Res256Freq20",
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_only_v1/datasets/real_gr1_arms_only_annotated:gr00t006_1cup1plate0distractor_Res256Freq20",
-        # "/mnt/amlfs-03/shared/datasets/gr1/real_gr1_arms_waist_v1/datasets/real_gr1_arms_waist_annotated:gr00t006_waist_1apple1shelf0distractor_Res256Freq20",
-    ]
+    import argparse
 
-    # for data_dir in data_dirs:
-    #     initial_actions = get_initial_actions(data_dir=data_dir)
-    #     save_initial_actions(initial_actions, Path(data_dir) / INITIAL_ACTIONS_FILENAME)
+    parser = argparse.ArgumentParser(description="Generate initial_actions.npz for a LeRobot dataset")
+    parser.add_argument("data_dir", type=str, help="Path to LeRobot dataset directory")
+    args = parser.parse_args()
 
-    #     lerobot_dir = data_dir.replace("_v1/datasets", "_v1_lerobot").replace(":", ".")
-    #     lerobot_meta_dir = Path(lerobot_dir) / "meta"
+    initial_actions = get_initial_actions_from_lerobot(args.data_dir)
+    save_initial_actions(
+        initial_actions,
+        Path(args.data_dir) / LE_ROBOT_METADATA_DIR / INITIAL_ACTIONS_FILENAME,
+    )
 
-    #     if not Path(lerobot_meta_dir).exists():
-    #         raise ValueError(f"Lerobot directory {lerobot_meta_dir} does not exist")
-
-    #     save_initial_actions(initial_actions, lerobot_meta_dir / INITIAL_ACTIONS_FILENAME)
-
-    #     # Test loading
-    #     loaded_initial_actions = load_initial_actions(Path(data_dir) / INITIAL_ACTIONS_FILENAME)
-
-    lerobot_data_dirs = [
-        # "/mnt/amlfs-03/shared/datasets/gr1/gr1_unified_v1/0303/gr1_unified.pnp_remove_static_threshold1_Freq20_new_pipeline",
-        # "/mnt/amlfs-03/shared/datasets/gr1/gr1_unified_v1/0303/gr1_unified.industrial_remove_static_threshold1_BGCropRes256Freq20",
-        "/mnt/amlfs-03/shared/datasets/gr1/gr1_unified_v1/0302/gr1_unified.pointing_remove_static_threshold1_BGCropRes256Freq20",
-    ]
-
-    for lerobot_data_dir in lerobot_data_dirs:
-        initial_actions = get_initial_actions_from_lerobot(lerobot_data_dir)
-        save_initial_actions(
-            initial_actions,
-            Path(lerobot_data_dir) / LE_ROBOT_METADATA_DIR / INITIAL_ACTIONS_FILENAME,
-        )
-
-        # Test loading
-        loaded_initial_actions = load_initial_actions(
-            Path(lerobot_data_dir) / LE_ROBOT_METADATA_DIR / INITIAL_ACTIONS_FILENAME
-        )
-
-        # loaded_example_initial_actions = load_initial_actions(
-        #     "/mnt/amlfs-03/shared/datasets/gr1/gr1_unified_v1/0228/5DC-S_nowaistprefix/gr1_unified.Slice_cutting_board_to_pan_oldsim_dummylang_0222_BGCropRes256Freq20/meta/initial_actions.npz"
-        # )
-
-        # print(list(loaded_initial_actions[0].keys())[0])
-        # print(list(loaded_example_initial_actions[0].keys())[0])
-        # breakpoint()
+    # Verify
+    loaded_initial_actions = load_initial_actions(
+        Path(args.data_dir) / LE_ROBOT_METADATA_DIR / INITIAL_ACTIONS_FILENAME
+    )
+    print(f"Saved initial actions for {len(loaded_initial_actions[0])} trajectories")

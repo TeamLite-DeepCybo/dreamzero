@@ -19,7 +19,7 @@ export HYDRA_FULL_ERROR=1
 
 # ============ CHANGE THESE VARIABLES ============
 # Dataset path (YAM in LeRobot format: state 14, action 14, videos top, left, right)
-YAM_DATA_ROOT=${YAM_DATA_ROOT:-"/mnt/aws-lfs-02/shared/kazheng/dreamzero/Dataset/folding_YAM"}
+YAM_DATA_ROOT=${YAM_DATA_ROOT:-"./data/yam_lerobot"}
 
 # Output directory for training checkpoints
 OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_yam_lora_dz_pretrained_100k_folding"}

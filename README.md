@@ -86,13 +86,25 @@ MAX_JOBS=8 pip install --no-build-isolation flash-attn
 pip install --no-build-isolation transformer_engine[pytorch]
 ```
 
-## Downloading the Pretrained Checkpoint
+## Downloading Pretrained Checkpoints
+
+### DreamZero-DROID (for inference)
 
 We release a 14B pretrained DROID checkpoint on [Huggingface](https://huggingface.co/GEAR-Dreams/DreamZero-DROID). To download the checkpoint, run
 
 ```bash
 hf download GEAR-Dreams/DreamZero-DROID --repo-type model --local-dir <path/to/checkpoint>
 ```
+
+### DreamZero Pretrained Checkpoint (for fine-tuning on new embodiments)
+
+To fine-tune DreamZero on a new embodiment (e.g. YAM, AgiBot), download the pretrained [dz_pretrained](https://huggingface.co/GEAR-Dreams/dz_pretrained) checkpoint (~45GB):
+
+```bash
+hf download GEAR-Dreams/dz_pretrained --repo-type model --local-dir ./checkpoints/dz_pretrained
+```
+
+This checkpoint is used as the base for LoRA post-training — see the [new embodiment guide](docs/DATASET_TO_GEAR_AND_TRAIN.md) and the YAM/AgiBot training scripts for usage.
 
 ## Running the Inference Server
 
@@ -129,7 +141,7 @@ The server saves:
 
 ## Training
 
-> **Training on a new embodiment?** See [Adding a New Embodiment to DreamZero](docs/DATASET_TO_GEAR_AND_TRAIN.md) for a complete guide on converting your dataset, configuring modalities, and launching training.
+> **Training on a new embodiment?** See [Adding a New Embodiment to DreamZero](docs/DATASET_TO_GEAR_AND_TRAIN.md) for a complete guide on converting your dataset, configuring modalities, and launching training. <em>Make sure to align the 3 camera view order to ensure positive transfer.</em>
 
 ### Downloading Pretrained Base Model Weights
 

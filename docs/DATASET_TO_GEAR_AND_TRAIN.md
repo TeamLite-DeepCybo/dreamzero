@@ -419,6 +419,16 @@ torchrun --nproc_per_node $NUM_GPUS --standalone \
 
 ## Step 6: Train
 
+### Download the pretrained checkpoint
+
+The training scripts load from a pretrained DreamZero checkpoint for LoRA fine-tuning. Download [dz_pretrained](https://huggingface.co/GEAR-Dreams/dz_pretrained) (~45GB):
+
+```bash
+hf download GEAR-Dreams/dz_pretrained --repo-type model --local-dir ./checkpoints/dz_pretrained
+```
+
+### Launch training
+
 ```bash
 DATA_ROOT=/path/to/your_dataset bash scripts/train/<EMBODIMENT>_training.sh
 
@@ -440,6 +450,7 @@ DATA_ROOT=/path/to/your_dataset OUTPUT_DIR=./checkpoints/run1 NUM_GPUS=4 \
 - [ ] Every state and action key appears in `normalization_modes` in the transform block
 - [ ] `relative_action_keys` are sub-key names that exist in both state and action
 - [ ] Wan2.1-I2V-14B-480P and umt5-xxl weights are available
+- [ ] `dz_pretrained` checkpoint is downloaded to `./checkpoints/dz_pretrained`
 
 ---
 

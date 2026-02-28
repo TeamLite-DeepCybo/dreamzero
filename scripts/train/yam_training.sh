@@ -96,7 +96,6 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     image_encoder_pretrained_path=$WAN_CKPT_DIR/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth \
     vae_pretrained_path=$WAN_CKPT_DIR/Wan2.1_VAE.pth \
     tokenizer_path=$TOKENIZER_DIR \
-    # Load pretrained weights from DreamZero
-    #pretrained_model_path=./checkpoints/dz_pretrained/copy-ckpt-50000 \
-    #++action_head_cfg.config.skip_component_loading=true \
-    #++action_head_cfg.config.defer_lora_injection=true
+    pretrained_model_path=./checkpoints/dz_pretrained/copy-ckpt-50000 \
+    ++action_head_cfg.config.skip_component_loading=true \
+    ++action_head_cfg.config.defer_lora_injection=true

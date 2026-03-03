@@ -21,19 +21,20 @@ from huggingface_hub import hf_hub_download
 logger = logging.getLogger(__name__)
 
 WAN_HF_REPO_ID = "Wan-AI/Wan2.1-I2V-14B-480P"
+WAN22_HF_REPO_ID = "Wan-AI/Wan2.2-TI2V-5B"
 
 
-def hf_download(filename: str) -> str:
-    """Download a file from the Wan2.1-I2V-14B-480P HuggingFace repo to HF cache."""
-    path = hf_hub_download(repo_id=WAN_HF_REPO_ID, filename=filename)
+def hf_download(filename: str, repo_id: str = WAN_HF_REPO_ID) -> str:
+    """Download a file from the specified HuggingFace repo to HF cache."""
+    path = hf_hub_download(repo_id=repo_id, filename=filename)
     return path
 
 
-def ensure_file(path: str | None, hf_filename: str) -> str:
+def ensure_file(path: str | None, hf_filename: str, repo_id: str = WAN_HF_REPO_ID) -> str:
     """Return a valid local path: use `path` if it exists, otherwise download from HuggingFace."""
     if path is not None and os.path.exists(path):
         return path
-    return hf_download(hf_filename)
+    return hf_download(hf_filename, repo_id)
 
 from torch.distributions import Beta
 import torch.distributed as dist
@@ -246,21 +247,27 @@ class WANPolicyHead(ActionHead):
         )
         self.image_encoder.model.load_state_dict(torch.load(img_enc_path, map_location='cpu'), strict=False)
 
+        # Wan2.2 (WanVideoVAE38, z_dim=48) uses Wan2.2_VAE.pth; Wan2.1 uses Wan2.1_VAE.pth
+        vae_hf_filename = "Wan2.2_VAE.pth" if getattr(self.vae, "z_dim", 16) == 48 else "Wan2.1_VAE.pth"
+        vae_repo_id = WAN22_HF_REPO_ID if getattr(self.vae, "z_dim", 16) == 48 else WAN_HF_REPO_ID
         vae_path = ensure_file(
             self.vae.vae_pretrained_path,
-            "Wan2.1_VAE.pth",
+            vae_hf_filename,
+            repo_id=vae_repo_id,
         )
         self.vae.model.load_state_dict(torch.load(vae_path, map_location='cpu'))
 
         if not config.skip_component_loading:
             dit_dir = self.model.diffusion_model_pretrained_path
+            # Wan2.2 (in_dim=48) uses Wan2.2-TI2V-5B repo; Wan2.1 uses Wan2.1-I2V-14B-480P
+            dit_repo_id = WAN22_HF_REPO_ID if getattr(self.model, "in_dim", 16) == 48 else WAN_HF_REPO_ID
             if dit_dir is None or not os.path.isdir(dit_dir):
-                index_path = hf_hub_download(repo_id=WAN_HF_REPO_ID, filename="diffusion_pytorch_model.safetensors.index.json")
+                index_path = hf_hub_download(repo_id=dit_repo_id, filename="diffusion_pytorch_model.safetensors.index.json")
                 dit_dir = os.path.dirname(index_path)
                 with open(index_path, 'r') as f:
                     index = json.load(f)
                 for shard_file in set(index["weight_map"].values()):
-                    hf_hub_download(repo_id=WAN_HF_REPO_ID, filename=shard_file)
+                    hf_hub_download(repo_id=dit_repo_id, filename=shard_file)
 
             if dit_dir is not None:
                 safetensors_path = os.path.join(dit_dir, "diffusion_pytorch_model.safetensors")

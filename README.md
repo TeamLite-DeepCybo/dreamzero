@@ -204,6 +204,8 @@ export TOKENIZER_DIR="./checkpoints/umt5-xxl"
 bash scripts/train/droid_training.sh
 ```
 
+**Using Wan2.2-TI2V-5B backbone (5B params, lower VRAM):** To train with the smaller Wan2.2-TI2V-5B model instead of Wan2.1-I2V-14B, see [docs/WAN22_BACKBONE.md](docs/WAN22_BACKBONE.md) and run `bash scripts/train/droid_training_wan22.sh`.
+
 ### Training Configuration
 
 The training script uses Hydra for configuration and DeepSpeed ZeRO Stage 2 for distributed training. Key defaults:

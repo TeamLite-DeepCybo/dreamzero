@@ -1,0 +1,31 @@
+# @package _global_
+# Wan2.2-TI2V-5B backbone config for DreamZero DROID training
+# Uses CausalWanModel with Wan2.2 architecture (dim=3072, 48-channel VAE)
+# Override base config with: model/dreamzero/action_head=wan_flow_matching_action_tf_wan22
+
+defaults:
+  - wan_flow_matching_action_tf
+
+# Wan2.2-TI2V-5B specific overrides
+# frame_seqlen for Wan2.2 VAE (16x spatial): 320x176 -> 20*11/4=55, 640x352 -> 40*22/4=220
+# DROID uses 320x176, so frame_seqlen=55
+frame_seqlen: 55
+
+action_head_cfg:
+  config:
+    diffusion_model_cfg:
+      model_type: "ti2v"
+      dim: 3072
+      in_dim: 48
+      ffn_dim: 14336
+      out_dim: 48
+      freq_dim: 256
+      eps: 1e-6
+      num_heads: 24
+      num_layers: 30
+    vae_cfg:
+      _target_: groot.vla.model.dreamzero.modules.wan_video_vae.WanVideoVAE38
+      _convert_: object
+      z_dim: 48
+      dim: 160
+      vae_pretrained_path: ${vae_pretrained_path}

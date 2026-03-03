@@ -23,6 +23,48 @@ __all__ = [
 ]
 
 
+def _gpu_supports_flash_attention():
+    """FlashAttention requires Ampere (compute capability 8.0) or newer."""
+    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
+        return False
+    try:
+        if not torch.cuda.is_available():
+            return False
+        cap = torch.cuda.get_device_capability()
+        return cap[0] >= 8
+    except Exception:
+        return False
+
+
+def _sdpa_attention_fallback(
+    q, k, v,
+    q_lens=None,
+    k_lens=None,
+    dropout_p=0.,
+    softmax_scale=None,
+    q_scale=None,
+    causal=False,
+    dtype=torch.bfloat16,
+):
+    """PyTorch SDPA fallback for GPUs that don't support FlashAttention (e.g. pre-Ampere)."""
+    if q_lens is not None or k_lens is not None:
+        warnings.warn(
+            'Padding mask is disabled when using scaled_dot_product_attention on this GPU. '
+            'It can have a slight impact on quality.'
+        )
+    q = q.transpose(1, 2).to(dtype)
+    k = k.transpose(1, 2).to(dtype)
+    v = v.transpose(1, 2).to(dtype)
+    if q_scale is not None:
+        q = q * q_scale
+    if softmax_scale is not None:
+        q = q * softmax_scale
+    out = torch.nn.functional.scaled_dot_product_attention(
+        q, k, v, attn_mask=None, is_causal=causal, dropout_p=dropout_p
+    )
+    return out.transpose(1, 2).contiguous()
+
+
 def flash_attention(
     q,
     k,
@@ -54,6 +96,19 @@ def flash_attention(
     half_dtypes = (torch.float16, torch.bfloat16)
     assert dtype in half_dtypes
     assert q.device.type == 'cuda' and q.size(-1) <= 256
+
+    # Use PyTorch SDPA on pre-Ampere GPUs (FlashAttention requires Ampere or newer)
+    if not _gpu_supports_flash_attention():
+        return _sdpa_attention_fallback(
+            q, k, v,
+            q_lens=q_lens,
+            k_lens=k_lens,
+            dropout_p=dropout_p,
+            softmax_scale=softmax_scale,
+            q_scale=q_scale,
+            causal=causal,
+            dtype=dtype,
+        )
 
     # params
     b, lq, lk, out_dtype = q.size(0), q.size(1), k.size(1), q.dtype

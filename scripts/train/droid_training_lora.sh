@@ -65,7 +65,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     num_action_per_block=24 \
     num_state_per_block=1 \
     seed=42 \
-    training_args.learning_rate=1e-5 \
+    training_args.learning_rate=1e-4 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
     save_steps=1000 \
     training_args.warmup_ratio=0.05 \

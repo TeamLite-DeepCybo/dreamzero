@@ -87,6 +87,12 @@ MAX_JOBS=8 pip install --no-build-isolation flash-attn
 pip install --no-build-isolation transformer_engine[pytorch]
 ```
 
+5. **[GB200 ONLY FOR TENSORRT, SKIP FOR H100] Install Tensorrt:**
+```bash
+pip install tensorrt==10.13.2.6 tensorrt_cu13==10.13.2.6 tensorrt_cu13_libs==10.13.2.6 tensorrt_cu13_bindings==10.13.2.6 --no-deps
+pip install transformer_engine==2.10.0 transformer_engine_cu12==2.10.0 transformer_engine_torch==2.10.0
+```
+
 ## Downloading Pretrained Checkpoints
 
 ### DreamZero-DROID (for inference)
@@ -123,6 +129,12 @@ The inference server uses PyTorch distributed training utilities to parallelize 
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.run --standalone --nproc_per_node=2 socket_test_optimized_AR.py --port 5000 --enable-dit-cache --model-path <path/to/checkpoint>
 ```
 
+(Optional only for GB200) Tensorrt enables faster generation
+```bash
+export LOAD_TRT_ENGINE=<path/to/checkpoint>/tensorrt/wan/WanModel_nvfp4.trt 
+export DYNAMIC_CACHE_SCHEDULE=true 
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.run --standalone --nproc_per_node=2 /mnt/aws-lfs-02/shared/seonghyeony/dreamzero/socket_test_optimized_AR.py --port 8000 --enable-dit-cache --model-path <path/to/checkpoint>
+```
 To verify the server is working, run a test client. The first few inferences will take a few minutes to warm up. After warming up, inference takes ~0.6s on GB200 and ~3s on H100.
 
 ```

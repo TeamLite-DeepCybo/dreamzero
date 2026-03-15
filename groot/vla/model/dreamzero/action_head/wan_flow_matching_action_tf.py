@@ -1317,7 +1317,7 @@ class WANPolicyHead(ActionHead):
         self.trt_engine = None
         if LOAD_TRT_ENGINE is not None:
             print(f"Loading TRT engine from {LOAD_TRT_ENGINE}")
-            import groot.control.main.vla.tensorrt_utils as trt_utils
+            import groot.control.tensorrt_utils as trt_utils
             model_path = LOAD_TRT_ENGINE
             self.trt_engine = trt_utils.load_tensorrt_engine(model_path, model_type="ar_14B")
 

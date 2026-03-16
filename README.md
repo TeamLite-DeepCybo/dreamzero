@@ -1,4 +1,6 @@
-# DreamZero: World Action Models Are Zero-Shot Policies
+# NVIDIA DreamZero: World Action Models Are Zero-Shot Policies
+A research project from [NVIDIA](https://www.nvidia.com/en-us/research/).
+
 [[Project Page](https://dreamzero0.github.io/)] [[Paper](https://arxiv.org/abs/2602.15922)]
 
 DreamZero is a World Action Model that jointly predicts actions and videos, achieving strong zero-shot performance on unseen tasks. This release package contains everything needed to load a pretrained DreamZero model and run distributed inference via a WebSocket server.

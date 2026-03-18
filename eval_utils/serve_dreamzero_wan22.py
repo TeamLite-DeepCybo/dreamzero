@@ -38,6 +38,19 @@ import torch
 import torch.distributed as dist
 from torch.distributed.device_mesh import init_device_mesh
 import tyro
+
+# Avoid FailOnRecompileLimitHit when serving: the flow scheduler's torch.compile'd
+# multistep_uni_p_bh_update recompiles under varying shapes/inputs (e.g. batch size,
+# step_index, order). Increase limits so the server doesn't hit the default cap.
+_dynamo = torch._dynamo.config
+if hasattr(_dynamo, "cache_size_limit"):
+    _dynamo.cache_size_limit = 1000
+if hasattr(_dynamo, "recompile_limit"):
+    _dynamo.recompile_limit = 800
+if hasattr(_dynamo, "accumulated_cache_size_limit"):
+    _dynamo.accumulated_cache_size_limit = 1000
+if hasattr(_dynamo, "accumulated_recompile_limit"):
+    _dynamo.accumulated_recompile_limit = 2000
 from pathlib import Path
 from tianshou.data import Batch
 

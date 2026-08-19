@@ -346,3 +346,8 @@ class EmbodimentTag(Enum):
     """
     The Mecka robot with hands.
     """
+
+    DEEPCYBO_LITE = "deepcybo_lite"
+    """
+    DeepCybo Lite bilateral teleop robot (2x7 joints + 2 grippers, 3 cameras).
+    """

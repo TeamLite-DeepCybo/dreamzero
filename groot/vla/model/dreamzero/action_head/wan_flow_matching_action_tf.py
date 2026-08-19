@@ -239,27 +239,28 @@ class WANPolicyHead(ActionHead):
         self.action_horizon = config.action_horizon
         self.num_inference_timesteps = config.num_inference_timesteps
         
-        text_enc_path = ensure_file(
-            self.text_encoder.text_encoder_pretrained_path,
-            "models_t5_umt5-xxl-enc-bf16.pth",
-        )
-        self.text_encoder.load_state_dict(torch.load(text_enc_path, map_location='cpu'))
+        if not config.skip_component_loading:
+            text_enc_path = ensure_file(
+                self.text_encoder.text_encoder_pretrained_path,
+                "models_t5_umt5-xxl-enc-bf16.pth",
+            )
+            self.text_encoder.load_state_dict(torch.load(text_enc_path, map_location='cpu'))
 
-        img_enc_path = ensure_file(
-            self.image_encoder.image_encoder_pretrained_path,
-            "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
-        )
-        self.image_encoder.model.load_state_dict(torch.load(img_enc_path, map_location='cpu'), strict=False)
+            img_enc_path = ensure_file(
+                self.image_encoder.image_encoder_pretrained_path,
+                "models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth",
+            )
+            self.image_encoder.model.load_state_dict(torch.load(img_enc_path, map_location='cpu'), strict=False)
 
-        # Wan2.2 (WanVideoVAE38, z_dim=48) uses Wan2.2_VAE.pth; Wan2.1 uses Wan2.1_VAE.pth
-        vae_hf_filename = "Wan2.2_VAE.pth" if getattr(self.vae, "z_dim", 16) == 48 else "Wan2.1_VAE.pth"
-        vae_repo_id = WAN22_HF_REPO_ID if getattr(self.vae, "z_dim", 16) == 48 else WAN_HF_REPO_ID
-        vae_path = ensure_file(
-            self.vae.vae_pretrained_path,
-            vae_hf_filename,
-            repo_id=vae_repo_id,
-        )
-        self.vae.model.load_state_dict(torch.load(vae_path, map_location='cpu'))
+            # Wan2.2 (WanVideoVAE38, z_dim=48) uses Wan2.2_VAE.pth; Wan2.1 uses Wan2.1_VAE.pth
+            vae_hf_filename = "Wan2.2_VAE.pth" if getattr(self.vae, "z_dim", 16) == 48 else "Wan2.1_VAE.pth"
+            vae_repo_id = WAN22_HF_REPO_ID if getattr(self.vae, "z_dim", 16) == 48 else WAN_HF_REPO_ID
+            vae_path = ensure_file(
+                self.vae.vae_pretrained_path,
+                vae_hf_filename,
+                repo_id=vae_repo_id,
+            )
+            self.vae.model.load_state_dict(torch.load(vae_path, map_location='cpu'))
 
         if not config.skip_component_loading:
             dit_dir = self.model.diffusion_model_pretrained_path

@@ -5,6 +5,7 @@
 # pick-and-place dataset (150 episodes, 16-dim state/action, 3 views).
 export HYDRA_FULL_ERROR=1
 export PATH=/home/admin/fbfm_ws/envs/dreamzero/bin:$PATH
+export PYTHONPATH=${HOME}/dreamzero:$PYTHONPATH
 
 # ============ CONFIGURATION ============
 WS=/mnt/data16t/dreamzero_deepcybo

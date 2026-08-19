@@ -5,6 +5,7 @@
 # pick-and-place dataset (150 episodes, 16-dim state/action, 3 views).
 export HYDRA_FULL_ERROR=1
 export PATH=/home/admin/fbfm_ws/envs/dreamzero/bin:$PATH
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH=${HOME}/dreamzero:$PYTHONPATH
 
 # ============ CONFIGURATION ============
@@ -14,7 +15,7 @@ OUTPUT_DIR=${OUTPUT_DIR:-"$WS/runs/dreamzero_deepcybo_lora_v1"}
 PRETRAINED=${PRETRAINED:-"$WS/checkpoints/DreamZero-AgiBot"}
 TOKENIZER_DIR=${TOKENIZER_DIR:-"$WS/checkpoints/umt5-xxl-tokenizer"}
 NUM_GPUS=${NUM_GPUS:-1}
-BATCH_SIZE=${BATCH_SIZE:-2}
+BATCH_SIZE=${BATCH_SIZE:-1}
 export WANDB_DIR="$WS/cache/wandb"
 export HF_HOME="$WS/cache/huggingface"
 mkdir -p "$WANDB_DIR"
@@ -54,6 +55,7 @@ python -m torch.distributed.run --nproc_per_node $NUM_GPUS --standalone \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$BATCH_SIZE \
+    training_args.gradient_accumulation_steps=2 \
     max_steps=20000 \
     weight_decay=1e-5 \
     save_total_limit=10 \

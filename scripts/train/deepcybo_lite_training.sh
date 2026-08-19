@@ -11,7 +11,7 @@ export PYTHONPATH=${HOME}/dreamzero:$PYTHONPATH
 # ============ CONFIGURATION ============
 WS=/mnt/data16t/dreamzero_deepcybo
 DATA_ROOT=${DATA_ROOT:-"$WS/datasets/deepcybo_lite_bilateral_gear"}
-OUTPUT_DIR=${OUTPUT_DIR:-"$WS/runs/dreamzero_deepcybo_lora_v1"}
+OUTPUT_DIR=${OUTPUT_DIR:-"$WS/runs/dreamzero_deepcybo_lora_v2"}
 PRETRAINED=${PRETRAINED:-"$WS/checkpoints/DreamZero-AgiBot"}
 TOKENIZER_DIR=${TOKENIZER_DIR:-"$WS/checkpoints/umt5-xxl-tokenizer"}
 NUM_GPUS=${NUM_GPUS:-1}
@@ -19,7 +19,7 @@ BATCH_SIZE=${BATCH_SIZE:-1}
 export WANDB_DIR="$WS/cache/wandb"
 export HF_HOME="$WS/cache/huggingface"
 mkdir -p "$WANDB_DIR"
-export WANDB_MODE=${WANDB_MODE:-offline}
+export WANDB_API_KEY=$(cat ~/.wandb_api_key)
 # =======================================
 
 if [ ! -f "$DATA_ROOT/meta/embodiment.json" ]; then
@@ -37,7 +37,7 @@ python -m torch.distributed.run --nproc_per_node $NUM_GPUS --standalone \
     groot/vla/experiment/experiment.py \
     report_to=wandb \
     data=dreamzero/deepcybo_lite_relative \
-    wandb_project=dreamzero_deepcybo \
+    wandb_project=dreamzero-deepcybo \
     train_architecture=lora \
     num_frames=33 \
     action_horizon=24 \
@@ -51,12 +51,12 @@ python -m torch.distributed.run --nproc_per_node $NUM_GPUS --standalone \
     seed=42 \
     training_args.learning_rate=1e-5 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
-    save_steps=2500 \
+    save_steps=500 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$BATCH_SIZE \
-    training_args.gradient_accumulation_steps=2 \
-    max_steps=20000 \
+    training_args.gradient_accumulation_steps=8 \
+    max_steps=5000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
     upload_checkpoints=false \

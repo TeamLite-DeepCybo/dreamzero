@@ -1,3 +1,4 @@
+import deepspeed  # noqa: F401 -- must import before transformers to break circular import (transformers Trainer <-> deepspeed OPT injection)
 import logging
 import os
 import time

@@ -16,6 +16,7 @@ BATCH_SIZE=${BATCH_SIZE:-2}
 export WANDB_DIR="$WS/cache/wandb"
 export HF_HOME="$WS/cache/huggingface"
 mkdir -p "$WANDB_DIR"
+export WANDB_MODE=${WANDB_MODE:-offline}
 # =======================================
 
 if [ ! -f "$DATA_ROOT/meta/embodiment.json" ]; then

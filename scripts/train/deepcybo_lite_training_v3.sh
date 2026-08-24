@@ -55,7 +55,7 @@ python -m torch.distributed.run --nproc_per_node $NUM_GPUS --standalone \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$BATCH_SIZE \
-    training_args.save_only_model=true \
+    ++training_args.save_only_model=true \
     training_args.gradient_accumulation_steps=8 \
     max_steps=5000 \
     weight_decay=1e-5 \

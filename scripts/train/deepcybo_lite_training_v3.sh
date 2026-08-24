@@ -11,7 +11,7 @@ export PYTHONPATH=${HOME}/dreamzero:$PYTHONPATH
 # ============ CONFIGURATION ============
 WS=/mnt/data16t/dreamzero_deepcybo
 DATA_ROOT=${DATA_ROOT:-"$WS/datasets/deepcybo_lite_bilateral_gear"}
-OUTPUT_DIR=${OUTPUT_DIR:-"$WS/runs/dreamzero_deepcybo_lora_v2"}
+OUTPUT_DIR=${OUTPUT_DIR:-"${HOME}/runs/dreamzero_deepcybo_lora_v3"}
 PRETRAINED=${PRETRAINED:-"$WS/checkpoints/DreamZero-AgiBot"}
 TOKENIZER_DIR=${TOKENIZER_DIR:-"$WS/checkpoints/umt5-xxl-tokenizer"}
 NUM_GPUS=${NUM_GPUS:-1}

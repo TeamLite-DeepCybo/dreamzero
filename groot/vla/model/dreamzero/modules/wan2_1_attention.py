@@ -20,6 +20,15 @@ except ModuleNotFoundError:
     FLASH_ATTN_3_AVAILABLE = False
 
 try:
+    from flash_attn.cute import (
+        flash_attn_func as _fa4_flash_attn_func,
+        flash_attn_varlen_func as _fa4_flash_attn_varlen_func,
+    )
+    FLASH_ATTN_4_AVAILABLE = True
+except Exception:
+    FLASH_ATTN_4_AVAILABLE = False
+
+try:
     import flash_attn
     FLASH_ATTN_2_AVAILABLE = True
 except ModuleNotFoundError:
@@ -37,7 +46,7 @@ import warnings
 
 def _gpu_supports_flash_attention():
     """FlashAttention requires Ampere (compute capability 8.0) or newer."""
-    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
+    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE or FLASH_ATTN_4_AVAILABLE):
         return False
     try:
         if not torch.cuda.is_available():
@@ -159,7 +168,7 @@ def flash_attention(
     if q_scale is not None:
         q = q * q_scale
 
-    if version == 3 and not FLASH_ATTN_3_AVAILABLE:
+    if version == 3 and not (FLASH_ATTN_3_AVAILABLE or FLASH_ATTN_4_AVAILABLE):
         warnings.warn(
             'Flash attention 3 is not available, use flash attention 2 instead.'
         )
@@ -168,7 +177,23 @@ def flash_attention(
     cu_seqlens_k = torch.cat([zeros, k_lens]).cumsum(0).to(torch.int32)
 
     # apply attention
-    if version == 3 and FLASH_ATTN_3_AVAILABLE:
+    if version == 3 and FLASH_ATTN_4_AVAILABLE:
+        x = _fa4_flash_attn_varlen_func(
+            q=q,
+            k=k,
+            v=v,
+            cu_seqlens_q=cu_seqlens_q,
+            cu_seqlens_k=cu_seqlens_k,
+            max_seqlen_q=lq,
+            max_seqlen_k=lk,
+            softmax_scale=softmax_scale,
+            causal=causal,
+            deterministic=deterministic,
+        )
+        if isinstance(x, tuple):
+            x = x[0]
+        x = x.unflatten(0, (b, lq))
+    elif version == 3 and FLASH_ATTN_3_AVAILABLE:
         # Note: dropout_p, window_size are not supported in FA3 now.
         x = flash_attn_interface.flash_attn_varlen_func(
             q=q,

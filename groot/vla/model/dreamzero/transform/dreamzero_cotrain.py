@@ -160,7 +160,19 @@ def collate(features: List[dict], tokenizer: AutoTokenizer, num_views=3, embodim
             batch['text_attention_mask_negative'] = mask
         else:
             values = [elem[key] for elem in features]
-            batch[key] = torch.from_numpy(np.stack(values))
+            arrays = [np.asarray(v) for v in values]
+            if arrays[0].ndim == 0:
+                stacked = np.stack(arrays)
+            else:
+                max_len = max(a.shape[0] for a in arrays)
+                padded = []
+                for a in arrays:
+                    if a.shape[0] < max_len:
+                        pad_width = [(0, max_len - a.shape[0])] + [(0, 0)] * (a.ndim - 1)
+                        a = np.pad(a, pad_width, mode='constant')
+                    padded.append(a)
+                stacked = np.stack(padded)
+            batch[key] = torch.from_numpy(stacked)
     return batch
 
 

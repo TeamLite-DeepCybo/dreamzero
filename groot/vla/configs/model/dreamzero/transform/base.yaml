@@ -27,6 +27,7 @@ embodiment_tag_to_projector_index:
   gr1_unified: 24
   robocasa_gr1_arms_waist_fourier_hands: 25
   agibot: 26
+  deepcybo_lite: 26
   lapa: 27
   oxe_mutex: 28
   oxe_roboset: 29

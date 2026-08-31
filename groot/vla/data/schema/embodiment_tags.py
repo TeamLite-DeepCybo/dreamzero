@@ -154,6 +154,7 @@ class EmbodimentTag(Enum):
     AGIBOT = "agibot"
 
     YAM = "yam"
+    DEEPCYBO_LITE = "deepcybo_lite"
 
     DREAM = "dream"
     """

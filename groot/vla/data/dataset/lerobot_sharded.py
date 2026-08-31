@@ -837,7 +837,9 @@ class ShardedLeRobotSubLangSingleActionChunkDatasetDROID(LeRobotSingleDataset):
                 step += 1
 
             if len(sampled_list) > 0:
-                sampled_indices = np.array(sorted(set(sampled_list)), dtype=int)
+                while len(sampled_list) < max_frames:
+                    sampled_list.append(sampled_list[-1])
+                sampled_indices = np.array(sorted(sampled_list), dtype=int)
             else:
                 sampled_indices = np.array([], dtype=int)
         else:
@@ -1011,11 +1013,12 @@ class ShardedLeRobotSubLangSingleActionChunkDatasetDROID(LeRobotSingleDataset):
                 step += 1
 
             if len(sampled_list) > 0:
-                unique_sorted = np.array(sorted(set(sampled_list)), dtype=int)
-                # Enforce divisibility by 30 and the 480 cap
-                capped_size = min(unique_sorted.size, max_frames)
-                divisible_size = (capped_size // 24) * 24
-                sampled_indices = unique_sorted[:divisible_size]
+                if len(sampled_list) < max_frames:
+                    last_chunk = sampled_list[-24:] if len(sampled_list) >= 24 else sampled_list[-1:]
+                    while len(sampled_list) < max_frames:
+                        sampled_list.extend(last_chunk)
+                unique_sorted = np.array(sorted(sampled_list), dtype=int)
+                sampled_indices = unique_sorted[:max_frames]
             else:
                 sampled_indices = np.array([], dtype=int)
         else:

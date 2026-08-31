@@ -14,6 +14,15 @@ except ModuleNotFoundError:
     FLASH_ATTN_3_AVAILABLE = False
 
 try:
+    from flash_attn.cute import (
+        flash_attn_func as _fa4_flash_attn_func,
+        flash_attn_varlen_func as _fa4_flash_attn_varlen_func,
+    )
+    FLASH_ATTN_4_AVAILABLE = True
+except Exception:
+    FLASH_ATTN_4_AVAILABLE = False
+
+try:
     import flash_attn
     FLASH_ATTN_2_AVAILABLE = True
 except ModuleNotFoundError:
@@ -28,7 +37,7 @@ except ModuleNotFoundError:
 
 def _gpu_supports_flash_attention():
     """FlashAttention requires Ampere (compute capability 8.0) or newer."""
-    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
+    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE or FLASH_ATTN_4_AVAILABLE):
         return False
     try:
         if not torch.cuda.is_available():
@@ -58,6 +67,14 @@ def flash_attention(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, num_heads
         v = rearrange(v, "b s (n d) -> b n s d", n=num_heads)
         x = F.scaled_dot_product_attention(q, k, v)
         x = rearrange(x, "b n s d -> b s (n d)", n=num_heads)
+    elif FLASH_ATTN_4_AVAILABLE:
+        q = rearrange(q, "b s (n d) -> b s n d", n=num_heads)
+        k = rearrange(k, "b s (n d) -> b s n d", n=num_heads)
+        v = rearrange(v, "b s (n d) -> b s n d", n=num_heads)
+        x = _fa4_flash_attn_func(q, k, v)
+        if isinstance(x, tuple):
+            x = x[0]
+        x = rearrange(x, "b s n d -> b s (n d)", n=num_heads)
     elif FLASH_ATTN_3_AVAILABLE:
         q = rearrange(q, "b s (n d) -> b s n d", n=num_heads)
         k = rearrange(k, "b s (n d) -> b s n d", n=num_heads)

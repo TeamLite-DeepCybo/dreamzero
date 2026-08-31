@@ -1,0 +1,16 @@
+# Local environment overrides for /root/DreamZero on this dev machine.
+# Upstream pyproject.toml pins torch==2.8.0 / torchvision==0.23.0 / torchaudio==2.8.0
+# (CUDA 12.9 builds). On this machine (B300 sm_103, CUDA 13.2) we reuse the
+# locally cached torch 2.9.0+cu128 / torchvision 0.24.0+cu128 cp312 wheels that
+# were already validated for GR00T (see /root/dev-machine-environment.md §6.5).
+# torchaudio is unused by the DreamZero codebase; PyPI 2.9.0 (default build) is fine.
+#
+# Install with:
+#   uv pip install -e . --override local-overrides.txt
+torch==2.9.0+cu128
+torchvision==0.24.0+cu128
+torchaudio==2.9.0
+# transformers 4.51.3 (upstream pin) + deepspeed >= 0.17 triggers a circular
+# import (deepspeed.runtime.hybrid_engine -> transformers.models.opt -> modeling_utils).
+# 4.57.3 is the version validated with deepspeed/torch 2.9 on this machine (GR00T env).
+transformers==4.57.3

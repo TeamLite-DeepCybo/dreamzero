@@ -7,6 +7,7 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 import torch
+import deepspeed
 
 from groot.vla.experiment.base import BaseExperiment, BaseTrainer
 from groot.vla.utils.action_args_override_utils import apply_action_overrides

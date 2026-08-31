@@ -9,6 +9,15 @@ except ModuleNotFoundError:
     FLASH_ATTN_3_AVAILABLE = False
 
 try:
+    from flash_attn.cute import (
+        flash_attn_func as _fa4_flash_attn_func,
+        flash_attn_varlen_func as _fa4_flash_attn_varlen_func,
+    )
+    FLASH_ATTN_4_AVAILABLE = True
+except Exception:
+    FLASH_ATTN_4_AVAILABLE = False
+
+try:
     import flash_attn
     FLASH_ATTN_2_AVAILABLE = True
 except ModuleNotFoundError:
@@ -25,7 +34,7 @@ __all__ = [
 
 def _gpu_supports_flash_attention():
     """FlashAttention requires Ampere (compute capability 8.0) or newer."""
-    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE):
+    if not (FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE or FLASH_ATTN_4_AVAILABLE):
         return False
     try:
         if not torch.cuda.is_available():
@@ -170,6 +179,24 @@ def flash_attention(
         out = out.transpose(1, 2).contiguous()
         return out
 
+    elif (version is None or version == 3) and FLASH_ATTN_4_AVAILABLE:
+        x = _fa4_flash_attn_varlen_func(
+            q=q,
+            k=k,
+            v=v,
+            cu_seqlens_q=torch.cat([q_lens.new_zeros([1]), q_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            cu_seqlens_k=torch.cat([k_lens.new_zeros([1]), k_lens]).cumsum(
+                0, dtype=torch.int32).to(q.device, non_blocking=True),
+            max_seqlen_q=lq,
+            max_seqlen_k=lk,
+            softmax_scale=softmax_scale,
+            causal=causal,
+            deterministic=deterministic,
+        )
+        if isinstance(x, tuple):
+            x = x[0]
+        x = x.unflatten(0, (b, lq))
     elif (version is None or version == 3) and FLASH_ATTN_3_AVAILABLE:
         # Note: dropout_p, window_size are not supported in FA3 now.
         x = flash_attn_interface.flash_attn_varlen_func(
@@ -224,7 +251,7 @@ def attention(
     dtype=torch.bfloat16,
     fa_version=None,
 ):
-    if FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE:
+    if FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE or FLASH_ATTN_4_AVAILABLE:
         return flash_attention(
             q=q,
             k=k,

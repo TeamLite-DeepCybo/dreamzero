@@ -26,6 +26,12 @@ except ModuleNotFoundError:
     FLASH_ATTN_2_AVAILABLE = False
 
 try:
+    from sageattention import sageattn
+    SAGE_ATTN_AVAILABLE = True
+except (ModuleNotFoundError, ImportError):
+    SAGE_ATTN_AVAILABLE = False
+
+try:
     import transformer_engine
     from groot.vla.model.dreamzero.modules.cudnn_attention import DotProductAttention
     TRANSFORMER_ENGINE_AVAILABLE = True
@@ -136,6 +142,17 @@ def flash_attention(
 
     def half(x):
         return x if x.dtype in half_dtypes else x.to(dtype)
+
+    if os.getenv("DZ_ATTN") == "sage" and not hasattr(flash_attention, "_dz_dbg"):
+        flash_attention._dz_dbg = True
+        print(f"[dz] sage guard check: avail={SAGE_ATTN_AVAILABLE} qlens={q_lens is not None} "
+              f"klens={k_lens is not None} drop={dropout_p} qscale={q_scale is not None} "
+              f"win={window_size}", flush=True)
+    if (os.getenv("DZ_ATTN") == "sage" and SAGE_ATTN_AVAILABLE
+            and q_lens is None and k_lens is None and dropout_p == 0.
+            and q_scale is None and window_size == (-1, -1)):
+        return sageattn(half(q), half(k), half(v), tensor_layout="NHD",
+                        is_causal=causal, sm_scale=softmax_scale).to(out_dtype)
 
     # preprocess query
     if q_lens is None:

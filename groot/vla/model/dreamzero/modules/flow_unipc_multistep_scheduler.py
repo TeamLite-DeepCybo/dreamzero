@@ -6,7 +6,16 @@ import math
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
+import os
 import torch
+
+
+def _dz_compile(fn):
+    if os.getenv("DZ_NO_SCHED_COMPILE"):
+        return fn
+    return torch.compile(mode="reduce-overhead", fullgraph=True, dynamic=False)(fn)
+
+
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.schedulers.scheduling_utils import (
     KarrasDiffusionSchedulers,
@@ -293,7 +302,7 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
 
             return epsilon
 
-    @torch.compile(mode="reduce-overhead", fullgraph=True, dynamic=False)
+    @_dz_compile
     def multistep_uni_p_bh_update(
         self,
         model_output: torch.Tensor,
@@ -405,7 +414,7 @@ class FlowUniPCMultistepScheduler(SchedulerMixin, ConfigMixin):
         x_t = x_t.to(x.dtype)
         return x_t
 
-    @torch.compile(mode="reduce-overhead", fullgraph=True, dynamic=False)
+    @_dz_compile
     def multistep_uni_c_bh_update(
         self,
         this_model_output: torch.Tensor,

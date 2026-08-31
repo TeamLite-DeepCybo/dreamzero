@@ -197,6 +197,9 @@ class WANPolicyHead(ActionHead):
         self.clip_feas = None
         self.ys = None
         self.current_start_frame = 0
+        self._dz_mode = None
+        self._dz_pregrounded = False
+        self._dz_ref_latents = None
         self.language = None
 
         self.ip_rank = 0
@@ -205,6 +208,7 @@ class WANPolicyHead(ActionHead):
         
         self._device = "cuda"
         self.dynamic_cache_schedule = os.getenv("DYNAMIC_CACHE_SCHEDULE", "False").lower() == "true"
+        self.dyn_force_last = int(os.getenv("DZ_DYN_FORCE_LAST", "0"))
 
 
         num_dit_steps = 8
@@ -597,8 +601,9 @@ class WANPolicyHead(ActionHead):
             target_modules=lora_target_modules.split(","),
         )
         model = get_peft_model(model, lora_config)
-        for param in model.parameters():
-            param.data = param.to(torch.float32)
+        if os.environ.get("DZ_SKIP_LORA_FP32") != "1":
+            for param in model.parameters():
+                param.data = param.to(torch.float32)
         return model
 
     def forward(self, backbone_output: BatchFeature, action_input: BatchFeature) -> BatchFeature:
@@ -946,6 +951,10 @@ class WANPolicyHead(ActionHead):
         if not self.dynamic_cache_schedule:
             return self.dit_step_mask[index]
 
+        if self.dyn_force_last and index >= self.num_inference_steps - self.dyn_force_last:
+            self.skip_countdown = 0
+            return True
+
         # Always run first 2 steps to establish history
         if len(prev_predictions) < 2:
             return True
@@ -961,8 +970,13 @@ class WANPolicyHead(ActionHead):
         v_prev = prev_predictions[-2][1].flatten(1).float()
         sim = torch.nn.functional.cosine_similarity(v_last, v_prev, dim=1).mean()
 
-        thresholds = [0.95, 0.93]
-        countdowns = [4, 2]
+        if os.getenv("DZ_DYN_THRESH"):
+            _parts = os.environ["DZ_DYN_THRESH"].split(";")
+            thresholds = [float(x) for x in _parts[0].split(",")]
+            countdowns = [int(x) for x in _parts[1].split(",")]
+        else:
+            thresholds = [0.95, 0.93]
+            countdowns = [4, 2]
 
         for threshold, countdown in zip(thresholds, countdowns):
             if sim > threshold:
@@ -1078,6 +1092,9 @@ class WANPolicyHead(ActionHead):
             image = latent_video
             if self.ip_rank == 0:
                 print("image shape@@", image.shape)
+        elif (self.current_start_frame != 0 and self._dz_mode == "predict"
+                and self._dz_pregrounded and self._dz_ref_latents is not None):
+            image = self._dz_ref_latents
         elif self.current_start_frame != 0:
             # this is for real world execution
             if (videos.shape[2] - 1) // 4 == self.num_frame_per_block:
@@ -1165,10 +1182,22 @@ class WANPolicyHead(ActionHead):
             
         timestep = torch.ones([batch_size, self.num_frame_per_block], device=noise_obs.device, dtype=torch.int64) * 0
 
-        if self.current_start_frame != 1:
+        _dz_skip_ground = (self._dz_mode == "predict" and self._dz_pregrounded)
+        if self._dz_mode == "predict":
+            self._dz_pregrounded = False
+        _dz_goff = (2 * self.num_frame_per_block if self._dz_mode == "ground"
+                    else self.num_frame_per_block)
+        if self._dz_mode == "ground" and self.current_start_frame < _dz_goff + 1:
+            return BatchFeature(data=dict(
+                action_pred=torch.zeros(
+                    batch_size, self.action_horizon, self.model.action_dim,
+                    device=noise_obs.device, dtype=noise_obs.dtype),
+                video_pred=None,
+            ))
+        if self.current_start_frame != 1 and not _dz_skip_ground:
             current_ref_latents = image[:, -self.num_frame_per_block:]
             if self.current_start_frame <= self.ys.shape[2]:
-                y = self.ys[:, :, self.current_start_frame - self.num_frame_per_block : self.current_start_frame]
+                y = self.ys[:, :, self.current_start_frame - _dz_goff : self.current_start_frame - _dz_goff + self.num_frame_per_block]
             else:
                 y = self.ys[:, :, -self.num_frame_per_block:]
             self._run_diffusion_steps(
@@ -1185,10 +1214,21 @@ class WANPolicyHead(ActionHead):
                 kv_caches=kv_caches,
                 crossattn_caches=crossattn_caches,
                 kv_cache_metadata=dict(
-                    start_frame=self.current_start_frame - self.num_frame_per_block,
+                    start_frame=self.current_start_frame - _dz_goff,
                     update_kv_cache=True,
                 ),
             )
+
+        if self._dz_mode == "ground":
+            if self.current_start_frame not in (0, 1):
+                self._dz_ref_latents = image
+                self._dz_pregrounded = True
+            return BatchFeature(data=dict(
+                action_pred=torch.zeros(
+                    batch_size, self.action_horizon, self.model.action_dim,
+                    device=noise_obs.device, dtype=noise_obs.dtype),
+                video_pred=None,
+            ))
 
         end_kv_event.record()
 
@@ -1273,9 +1313,11 @@ class WANPolicyHead(ActionHead):
                     ),
                 )
                 flow_pred_cond, flow_pred_cond_action = predictions[0]
-                flow_pred_uncond, flow_pred_uncond_action = predictions[1]
-
-                flow_pred = flow_pred_uncond + self.cfg_scale * (flow_pred_cond - flow_pred_uncond)
+                if self.cfg_scale != 1.0:
+                    flow_pred_uncond, flow_pred_uncond_action = predictions[1]
+                    flow_pred = flow_pred_uncond + self.cfg_scale * (flow_pred_cond - flow_pred_uncond)
+                else:
+                    flow_pred = flow_pred_cond
                 prev_predictions.append((current_timestep, flow_pred, flow_pred_cond_action))
                 max_cache_size = 2
                 if len(prev_predictions) > max_cache_size:
@@ -1357,12 +1399,30 @@ class WANPolicyHead(ActionHead):
         self.image_encoder.to(device=self._device, dtype=torch.bfloat16)
         self.vae.to(device=self._device, dtype=torch.bfloat16)
         import os
+        _q = os.getenv("DZ_QUANT")
+        if _q == "fp8":
+            try:
+                from torchao.quantization import quantize_
+                try:
+                    from torchao.quantization import (
+                        Float8DynamicActivationFloat8WeightConfig, PerRow)
+                    _qcfg = Float8DynamicActivationFloat8WeightConfig(granularity=PerRow())
+                except ImportError:
+                    from torchao.quantization import (
+                        float8_dynamic_activation_float8_weight, PerRow)
+                    _qcfg = float8_dynamic_activation_float8_weight(granularity=PerRow())
+                quantize_(self.model, _qcfg)
+                print("[dz] DiT linears quantized to FP8 dynamic per-row")
+            except Exception as _e:
+                print(f"[dz] DZ_QUANT=fp8 FAILED: {type(_e).__name__}: {_e}")
         ENABLE_TENSORRT = os.getenv("ENABLE_TENSORRT", "False").lower() == "true"
         LOAD_TRT_ENGINE = os.getenv("LOAD_TRT_ENGINE", None)
 
         # Torch compile the modules. Skip _forward_blocks: Dynamo with fullgraph can fail on
         # shape variation (e.g. x [1,50,C] vs e [1,200,C]); the block aligns e to x at runtime.
-        if not ENABLE_TENSORRT:
+        if os.getenv("DZ_NO_ENCODER_COMPILE"):
+            print("[dz] skipping encoder torch.compile (DZ_NO_ENCODER_COMPILE)")
+        elif not ENABLE_TENSORRT:
             print("Torch compiling the TextEncoder, ImageEncoder, and VAE modules (Wan _forward_blocks not compiled).")
 
             self.text_encoder.forward = torch.compile(
@@ -1376,7 +1436,43 @@ class WANPolicyHead(ActionHead):
             self.vae.model.encode = torch.compile(
                 mode="reduce-overhead", fullgraph=True, dynamic=False,
             )(self.vae.model.encode)
+
+            _blk_mode = None  # hook moved below (must run regardless of encoder-compile gate)
+            if _blk_mode == "perblock":
+                _m = self.model
+                for _ in range(4):
+                    if hasattr(_m, "blocks"):
+                        break
+                    _m = getattr(_m, "base_model", None) or getattr(_m, "model", None) or _m
+                if hasattr(_m, "blocks"):
+                    for _b in _m.blocks:
+                        _b.forward = torch.compile(mode=os.getenv("DZ_PERBLOCK_MODE", "default"), fullgraph=False)(_b.forward)
+                    print(f"[dz] per-block compile: {len(_m.blocks)} DiT blocks wrapped")
+                else:
+                    print("[dz] per-block compile: blocks attr NOT FOUND")
+            elif _blk_mode:
+                print(f"[dz] torch.compile DiT model.forward mode={_blk_mode} (fullgraph=False)")
+                self.model.forward = torch.compile(
+                    mode=_blk_mode, fullgraph=False,
+                )(self.model.forward)
         
+        _blk_mode = os.getenv("DZ_COMPILE_BLOCKS")
+        if _blk_mode == "perblock":
+            _m = self.model
+            for _ in range(4):
+                if hasattr(_m, "blocks"):
+                    break
+                _m = getattr(_m, "base_model", None) or getattr(_m, "model", None) or _m
+            if hasattr(_m, "blocks"):
+                for _b in _m.blocks:
+                    _b.forward = torch.compile(mode=os.getenv("DZ_PERBLOCK_MODE", "default"), fullgraph=False)(_b.forward)
+                print(f"[dz] per-block compile: {len(_m.blocks)} DiT blocks wrapped")
+            else:
+                print("[dz] per-block compile: blocks attr NOT FOUND")
+        elif _blk_mode:
+            print(f"[dz] torch.compile DiT model.forward mode={_blk_mode} (fullgraph=False)")
+            self.model.forward = torch.compile(mode=_blk_mode, fullgraph=False)(self.model.forward)
+
         self.trt_engine = None
         if LOAD_TRT_ENGINE is not None:
             print(f"Loading TRT engine from {LOAD_TRT_ENGINE}")

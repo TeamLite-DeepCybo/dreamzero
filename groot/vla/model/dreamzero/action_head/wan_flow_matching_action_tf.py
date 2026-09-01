@@ -214,7 +214,12 @@ class WANPolicyHead(ActionHead):
         num_dit_steps = 8
         if os.getenv("NUM_DIT_STEPS") is not None:
             num_dit_steps = int(os.getenv("NUM_DIT_STEPS"))
-        if num_dit_steps == 5:
+        if os.getenv("DZ_DIT_MASK"):
+            _keep = {int(x) for x in os.environ["DZ_DIT_MASK"].split(",")}
+            assert 0 in _keep, "first step must be in DZ_DIT_MASK"
+            self.dit_step_mask = [i in _keep for i in range(self.num_inference_steps)]
+            print(f"[dz] custom dit mask: {sorted(_keep)} of {self.num_inference_steps}")
+        elif num_dit_steps == 5:
             self.dit_step_mask = [True, True, True, False, False, False, False, True, False, False, False, False, True, False, False, False]
         elif num_dit_steps == 6:
             self.dit_step_mask = [True, True, False, False, False, True, False, False, False, False, True, False, False, False, True, True]

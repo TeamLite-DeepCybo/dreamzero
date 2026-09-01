@@ -20,9 +20,14 @@ b300 step-5000 checkpoint. Bigger is better; 1.0 = no better than freezing.
 A chunk is 24 actions at 30 Hz = 0.8 s of robot motion. Fewer, earlier
 denoise steps measurably **improve** action MSE on this action head (the
 sweep is monotonic: mask {0,1,2} 2.15 > {0,1,5} 2.06 > {0,1,8} 1.97 >
-{0,1,12} 1.85 > dyncache 1.82 > 8-step 1.75). Judge dreamed-video quality
-separately before committing to a mask — the video gets the same truncated
-schedule as the actions.
+{0,1,12} 1.85 > dyncache 1.82 > 8-step 1.75). The dreamed video gets the
+same truncated schedule as the actions, so dream quality and action quality
+can diverge under aggressive masks.
+
+> **Status: not yet validated on a physical robot.** Every number and
+> serving behavior in this document comes from offline benchmarks and paced
+> teacher-forced HTTP replay on the RTX Pro 6000. No config has run against
+> the real RoboDriver/robot yet.
 
 ## What you need
 
@@ -57,13 +62,16 @@ python scripts/serve_deepcybo_lite_dreamzero_http.py \
   --port 9090 --async_pipeline --ground_split --smooth_taps 3
 ```
 
-`scripts/run_http_server_pro.sh` is the production launcher (RTX Pro 6000
-paths). First start with a cold inductor cache spends 2–8 min compiling;
-keep `TORCHINDUCTOR_CACHE_DIR` on persistent disk so restarts are fast.
+`scripts/run_http_server_pro.sh` is the launcher used on our RTX Pro 6000
+(machine-specific paths). First start with a cold inductor cache spends
+2–8 min compiling; a persistent `TORCHINDUCTOR_CACHE_DIR` makes restarts
+fast.
 
-The robot side needs **zero changes**: the server is a drop-in for the pi0.5
-HTTP server (openpi fork `feat/deepcybo-lite-pipeline`) — same endpoints,
-same JSON — so RoboDriver just points `server_url` at this host.
+The server implements the same endpoints and JSON schema as the pi0.5 HTTP
+server (openpi fork `feat/deepcybo-lite-pipeline`), so by design the only
+robot-side change is RoboDriver's `server_url`. This drop-in claim has been
+validated against our own test client only — not against the real
+RoboDriver.
 
 ### Protocol
 
@@ -95,7 +103,7 @@ right gripper]`.
   "predict" mode and is denoise-only. This also fixes a grounding-span
   misalignment plain async had (executed-vs-GT 0.0245 → 0.0085).
 - **`--smooth_taps 3`**: binomial ¼-½-¼ smoothing along the 24-action chunk.
-  Measured to improve *both* MSE and jerk; keep it on.
+  In teacher-forced eval it improved both MSE and jerk vs no smoothing.
 - **Session resets**: explicit `/reset`, `session_id` change, prompt change,
   idle gap (`--idle_reset_s`), OOM auto-retry, optional
   `--max_session_chunks`. The model also self-resets its KV window every
@@ -107,13 +115,13 @@ right gripper]`.
 | flag | default | meaning |
 |---|---|---|
 | `--execute_horizon` | 8 | actions returned per request; model runs every 24/N requests |
-| `--async_pipeline` | off | one-chunk-ahead prefetch (recommended) |
-| `--ground_split` | off | mid-cycle KV grounding, denoise-only boundaries (recommended) |
+| `--async_pipeline` | off | one-chunk-ahead prefetch; adds one chunk of observation staleness. Untested on a real robot. |
+| `--ground_split` | off | with async: mid-cycle KV grounding, denoise-only boundaries. Untested on a real robot. |
 | `--smooth_taps` | 3 | 0/3/5-tap binomial chunk smoothing |
 | `--max_session_chunks` | 0 (∞) | force reset after N model calls (VRAM guard for 48 GB cards) |
 | `--idle_reset_s` | 120 | reset session after idle gap |
 | `--default_prompt` | boat task | prompt used when the request has none |
-| `--early_prefetch` | off | **deprecated** — measured worse than the normal trigger; do not use |
+| `--early_prefetch` | off | measured worse than the default trigger in teacher-forced replay (fires later in the cycle, stalls 0.63–1.26 s); kept for reference |
 
 ## Environment flags (model-side)
 
@@ -128,18 +136,19 @@ modules). Unset ⇒ upstream behavior.
 | `DZ_DIT_MASK` | e.g. `0,1,2` | **custom static mask**: comma list of step indices to compute; skipped steps coast on the last velocity. Must include 0; keep 1 too (the multistep solver needs history). Overrides `NUM_DIT_STEPS`. |
 | `DYNAMIC_CACHE_SCHEDULE` | `true` | adaptive skipping by cosine similarity of consecutive velocities (~4 computed steps). Mutually exclusive with static masks (it takes priority). |
 | `DZ_DYN_THRESH` | `0.95,0.93;4,2` | dyncache thresholds;countdowns override |
-| `DZ_DYN_FORCE_LAST` | int N | force-compute the last N steps under dyncache (reverts its quality quirk — measured pointless; keep 0) |
+| `DZ_DYN_FORCE_LAST` | int N | force-compute the last N steps under dyncache. Measured (N=3): reverts exactly to the static-mask numbers at higher cost. |
 
-Measured guidance: `DZ_DIT_MASK=0,1,2` is the best quality ever measured
-(2.15×) at 0.90 s/chunk; `0,1` is sub-realtime (0.71 s) at 2.11×. Place
-extra steps **early** — quality degrades monotonically as the last step
-moves later.
+Measured (teacher-forced dense grid, b300 step-5000): `DZ_DIT_MASK=0,1,2`
+scored the best ratio measured so far (2.15×) at 0.90 s/chunk; `0,1` ran
+sub-realtime (0.71 s) at 2.11×. In the sweep, quality degraded monotonically
+as the last computed step moved later. None of these masks has run on a
+real robot yet.
 
 ### CFG
 
 | var | effect |
 |---|---|
-| `DZ_CFG_SCALE` | overrides `cfg_scale`. `1.0` cleanly skips the uncond branch: ~2× less DiT compute *and* half the KV memory. Quality-neutral on this task (measured). Upstream crashes at 1.0 without this patch. |
+| `DZ_CFG_SCALE` | overrides `cfg_scale`. `1.0` cleanly skips the uncond branch: ~2× less DiT compute *and* half the KV memory. Quality-neutral in teacher-forced eval on this task. Upstream crashes at 1.0 without this patch. |
 
 ### Compilation
 
@@ -156,8 +165,8 @@ moves later.
 
 | var | effect |
 |---|---|
-| `DZ_QUANT=fp8` | torchao FP8 dynamic per-row on DiT linears. **Slower than bf16 on sm_120** (2.02 s vs 0.98 s — act-quant overhead > GEMM gain at this M). Don't use; documented so nobody re-tries it blind. |
-| `DZ_ATTN=sage` | SageAttention 2 path (falls through to FA2 unless the call shape is compatible). No win measured on this stack; FA2 is the default and fine. |
+| `DZ_QUANT=fp8` | torchao FP8 dynamic per-row on DiT linears. Measured **slower than bf16 on sm_120** (2.02 s vs 0.98 s/chunk — per-row act-quant overhead exceeds the FP8 GEMM gain at this batch size). |
+| `DZ_ATTN=sage` | SageAttention 2 path (falls through to FA2 unless the call shape is compatible). No speedup measured on this stack; FA2 is the default. |
 
 ### Loading
 
@@ -213,13 +222,14 @@ change.
    bookkeeping requires it. The server's 8-action responses are slices of
    the same 24-chunk, replanned every 3rd request — do not turn it into an
    8-action receding horizon with cold calls.
-3. **JPEG quality**: the HTTP contract ships JPEGs; q92 round-trip alone
-   adds ~1.3e-03 action MSE vs PNG. In-distribution (training data was
-   H.264) and acceptable — but don't lower the quality setting.
+3. **JPEG quality**: the HTTP contract ships JPEGs; a q92 round-trip alone
+   adds ~1.3e-03 action MSE vs PNG (training data was H.264, so compressed
+   input is in-distribution). Lower quality settings were not measured.
 4. **cfg 5.0 + 21 latent slots ≈ 30 GiB KV.** 880 tokens/latent frame ×
    40 layers × K,V × bf16 = 720 MiB/frame/cache, ×2 with CFG on. A 48 GB
    card OOMs mid-session; use `DZ_CFG_SCALE=1.0` + `--max_session_chunks`.
 5. **Dream quality vs action quality diverge under truncated schedules.**
-   Masks improve action MSE but the dreamed video gets 2–3 denoise steps;
-   eyeball dreams (dashboard) before shipping a mask, since grounding
-   quality on long sessions depends on them.
+   Masks improved action MSE in our sweeps, but the dreamed video gets the
+   same 2–3 denoise steps, and long-session KV grounding uses those dreamed
+   latents. The effect of degraded dreams on long-session behavior is
+   unmeasured; dream frames for each config are in the eval dashboard.

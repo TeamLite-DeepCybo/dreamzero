@@ -243,6 +243,56 @@ The training script uses Hydra for configuration and DeepSpeed ZeRO Stage 2 for 
 
 > **Note:** `max_steps=10` is set for a quick sanity check. For full training, increase this to your desired number of steps and configure `save_steps` / `save_strategy` accordingly.
 
+### DeepCybo Lite Post-Training (B300 recipe)
+
+This fork adds a tested DeepCybo Lite post-training recipe on the 2×B300 image:
+
+- Embodiment: `deepcybo_lite`
+- Task: bimanual boat sorting (150 episodes / 46,668 rows)
+- Cameras: 3 views, mapped as `image_head -> top_camera`, `image_wrist_left -> left_camera`, `image_wrist_right -> right_camera`
+- State/action layout: 16-dim reordered to `[L_joints(7), L_gripper(1), R_joints(7), R_gripper(1)]`
+- Base model: `DreamZero-AgiBot`
+- Method: LoRA fine-tune, LR 1e-4, per-device batch 8, 2 GPUs, effective batch 16
+
+Recommended dev image:
+
+```text
+exp_lite_dreamzero_posttrain:0.1.0
+```
+
+One-command launch (HF login + W&B logging included):
+
+```bash
+export HF_TOKEN="<YOUR_HF_TOKEN>"
+export WANDB_KEY="<YOUR_WANDB_KEY>"
+
+hf auth login --token "$HF_TOKEN" --add-to-git-credential || true
+
+bash /usr/local/bin/setup-files/launch-dreamzero-exp.sh \
+  --task <your_task_name> \
+  --data dreamzero/deepcybo_lite_relative \
+  --embodiment deepcybo_lite \
+  --data-root /hdfs/share-data-1/datasets/dreamzero/lite_boat_full_deepcybo \
+  --arch lora \
+  --base-ckpt ./checkpoints/DreamZero-AgiBot \
+  --max-steps 5000 \
+  --lr 1e-4 \
+  --batch-size 8 \
+  --gpus 2 \
+  --wandb-key "$WANDB_KEY" \
+  --extra save_steps=500 \
+  --extra save_lora_only=false \
+  --extra training_args.save_only_model=true \
+  --detach
+```
+
+Notes:
+
+- `--wandb-key` logs to your W&B account; the launcher writes it into the task's `experiment_record.json`.
+- `--extra save_lora_only=false` keeps full-model checkpoints instead of adapter-only saves.
+- `--detach` runs training in the background; logs go to `/hdfs/share-data-1/projects/dreamzero/runs/<task_name>/train.log`.
+- Add `--dry-run` first to print the exact `torchrun` command before launching.
+
 
 ## Citation
 

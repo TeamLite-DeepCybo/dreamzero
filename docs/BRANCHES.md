@@ -86,8 +86,10 @@ On the **storage box**, everything lives under `~/dreamzero_eval/`:
   dataset (full-dataset meta included)
 - `results/<run>_dense/chunks.npz` — eval runs; the dashboard pulls from here
 
-Best checkpoints as of Sep 2026, by teacher-forced dense-grid ratio
-(higher = better; 1.0 = hold-position baseline):
+Best checkpoints as of Sep 2026. The score: at 91 sampled moments of the
+teleop data, the model predicts the next 24 actions from the real camera
+frames; the score is the error of a "keep still" baseline divided by the
+model's error (1.0 = no better than not moving; higher = better):
 `b300_b16_5000` ≈ 2.15× (with the 3-step denoise mask, 1.75× at default
 settings) and `v3-checkpoint-2500` ≈ 1.80×. Latency on the inference box
 reaches 0.71 s per 0.8 s action chunk (sub-realtime) with the 2-step mask —

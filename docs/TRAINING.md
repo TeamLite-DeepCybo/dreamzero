@@ -139,10 +139,15 @@ Notes that matter (each learned the hard way):
 
 Use the `deepcybo-inference` branch: `scripts/open_loop_deepcybo.py` for
 our-layout datasets, `scripts/open_loop_b300native.py` for checkpoints
-trained with this branch's data layout. The honest metric is the HORIZON-24
-MSE ratio vs the hold-position baseline on a 100-sample dense grid
-(first-step MSE is misleading: holding still is nearly optimal at 1 step).
-Results feed the eval dashboard (`dashboard/` on that branch).
+trained with this branch's data layout. The eval samples ~91 moments spread
+across the teleop dataset; at each one the model sees the real camera
+frames and joint state and predicts the next 24 actions (0.8 s), scored by
+MSE against what the operator actually did. The headline number is that
+error relative to a "keep still" baseline (baseline MSE ÷ model MSE:
+1.0 = no better than not moving, higher is better) — score all 24 steps,
+because teleop motion is slow enough that not moving is nearly optimal for
+a single step. Results feed the eval dashboard (`dashboard/` on that
+branch).
 
 ## Existing checkpoints and where everything lives
 
@@ -177,8 +182,8 @@ The machines involved (the address map is in `docs/BRANCHES.md`):
   and the serving venv live in `/dev/shm` there (RAM-backed — gone after a
   reboot; re-copy from the A6000 machine).
 
-Measured quality reference (teacher-forced dense grid, ratio vs hold
-baseline — higher is better): `b300_b16_5000` 1.75× at default inference
-settings, up to 2.15× with the inference branch's 3-step denoise mask;
-`v3-checkpoint-2500` 1.80× with the full inference stack. Nothing has been
-validated on the physical robot yet.
+Measured quality reference (the offline eval described above — higher is
+better, 1.0 = no better than keeping still): `b300_b16_5000` 1.75× at
+default inference settings, up to 2.15× with the inference branch's 3-step
+denoise mask; `v3-checkpoint-2500` 1.80× with the full inference stack.
+Nothing has been validated on the physical robot yet.

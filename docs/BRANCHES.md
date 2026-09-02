@@ -30,11 +30,12 @@ See `docs/INFERENCE.md` on that branch.
 The bases differ, which is why these are two branches rather than one: the
 inference stack predates the training branch's upstream bump. The inference
 patches are env-gated no-ops by default and are expected to port onto the
-newer base; that unification has not been done yet. Until it is, a
-checkpoint should be evaluated/served with the branch it was verified on —
-mixing repo versions between training and eval is exactly what caused a
-multi-day debugging saga (see the loader-routing gotcha in
-`docs/INFERENCE.md`).
+newer base; that unification has not been done yet. The inference branch
+loads and evaluates checkpoints from **both** training lineages (use
+`open_loop_deepcybo.py` for our data layout, `open_loop_b300native.py` for
+the B300 layout) — all published batch-16 eval numbers were produced by it.
+If you write a new loading entry point, read the loader-routing gotcha in
+`docs/INFERENCE.md` first.
 
 ## Data conventions — read this before touching checkpoints
 

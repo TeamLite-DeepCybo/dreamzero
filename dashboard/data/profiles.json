@@ -1,0 +1,571 @@
+{
+  "deepcybo": {
+    "label": "DeepCybo Lite",
+    "urdf": "robot/lite_flash_arm_gripper.urdf",
+    "packages": {
+      "lite_urdf": "./robot"
+    },
+    "fbx": false,
+    "samplesUrl": "data/samples.json",
+    "runsUrl": "data/runs.json",
+    "framesSeqBase": "data/dashboard_data/frames_seq",
+    "horizon": 24,
+    "cameraLink": "head_camera_link",
+    "dims": [
+      {
+        "name": "left_shoulder_pitch",
+        "joint": "left_shoulder_pitch_joint"
+      },
+      {
+        "name": "left_shoulder_roll",
+        "joint": "left_shoulder_roll_joint"
+      },
+      {
+        "name": "left_shoulder_yaw",
+        "joint": "left_shoulder_yaw_joint"
+      },
+      {
+        "name": "left_elbow_pitch",
+        "joint": "left_elbow_pitch_joint"
+      },
+      {
+        "name": "left_wrist_yaw",
+        "joint": "left_wrist_yaw_joint"
+      },
+      {
+        "name": "left_wrist_roll",
+        "joint": "left_wrist_roll_joint"
+      },
+      {
+        "name": "left_wrist_pitch",
+        "joint": "left_wrist_pitch_joint"
+      },
+      {
+        "name": "right_shoulder_pitch",
+        "joint": "right_shoulder_pitch_joint"
+      },
+      {
+        "name": "right_shoulder_roll",
+        "joint": "right_shoulder_roll_joint"
+      },
+      {
+        "name": "right_shoulder_yaw",
+        "joint": "right_shoulder_yaw_joint"
+      },
+      {
+        "name": "right_elbow_pitch",
+        "joint": "right_elbow_pitch_joint"
+      },
+      {
+        "name": "right_wrist_yaw",
+        "joint": "right_wrist_yaw_joint"
+      },
+      {
+        "name": "right_wrist_roll",
+        "joint": "right_wrist_roll_joint"
+      },
+      {
+        "name": "right_wrist_pitch",
+        "joint": "right_wrist_pitch_joint"
+      },
+      {
+        "name": "left_gripper",
+        "joint": "left_gripper_joint",
+        "gripperMax": 0.5
+      },
+      {
+        "name": "right_gripper",
+        "joint": "right_gripper_joint",
+        "gripperMax": 0.5
+      }
+    ],
+    "cameras": [
+      {
+        "id": "head",
+        "label": "head cam",
+        "link": "head_camera_link",
+        "framesBase": "data/dashboard_data/frames_seq",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 80
+        }
+      },
+      {
+        "id": "wl",
+        "label": "wrist LEFT",
+        "link": "left_wrist_camera_link",
+        "framesBase": "data/dashboard_data/frames_seq_wl",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 125
+        }
+      },
+      {
+        "id": "wr",
+        "label": "wrist RIGHT",
+        "link": "right_wrist_camera_link",
+        "framesBase": "data/dashboard_data/frames_seq_wr",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 125
+        }
+      }
+    ],
+    "dreams": {
+      "v3_2000_dense": "data/dream_seq_2000",
+      "v3_2500_dense": "data/dream_seq_2500",
+      "v3_2500_fastcfg_dense": "data/dream_seq_2500fast",
+      "b300_5000_dense": "data/dream_seq_b300_5000",
+      "b300_5000_fastcfg_dense": "data/dream_seq_b300_5000fast",
+      "b300_5000_mask3_dense": "data/dream_seq_b300_5000mask3",
+      "b300_5000_mask2_dense": "data/dream_seq_b300_5000mask2"
+    }
+  },
+  "agibot": {
+    "label": "AgiBot G1 (reference)",
+    "urdf": "robot_g1/G1_omnipicker.urdf",
+    "packages": {
+      "genie_robot_description": "./robot_g1/genie_robot_description"
+    },
+    "fbx": true,
+    "samplesUrl": "data_agibot/samples.json",
+    "runsUrl": "data_agibot/runs.json",
+    "framesSeqBase": "data_agibot/agibot_dashboard/frames_seq",
+    "horizon": 48,
+    "cameraLink": null,
+    "dims": [
+      {
+        "name": "l_arm_j1",
+        "joint": "idx21_arm_l_joint1"
+      },
+      {
+        "name": "l_arm_j2",
+        "joint": "idx22_arm_l_joint2"
+      },
+      {
+        "name": "l_arm_j3",
+        "joint": "idx23_arm_l_joint3"
+      },
+      {
+        "name": "l_arm_j4",
+        "joint": "idx24_arm_l_joint4"
+      },
+      {
+        "name": "l_arm_j5",
+        "joint": "idx25_arm_l_joint5"
+      },
+      {
+        "name": "l_arm_j6",
+        "joint": "idx26_arm_l_joint6"
+      },
+      {
+        "name": "l_arm_j7",
+        "joint": "idx27_arm_l_joint7"
+      },
+      {
+        "name": "r_arm_j1",
+        "joint": "idx61_arm_r_joint1"
+      },
+      {
+        "name": "r_arm_j2",
+        "joint": "idx62_arm_r_joint2"
+      },
+      {
+        "name": "r_arm_j3",
+        "joint": "idx63_arm_r_joint3"
+      },
+      {
+        "name": "r_arm_j4",
+        "joint": "idx64_arm_r_joint4"
+      },
+      {
+        "name": "r_arm_j5",
+        "joint": "idx65_arm_r_joint5"
+      },
+      {
+        "name": "r_arm_j6",
+        "joint": "idx66_arm_r_joint6"
+      },
+      {
+        "name": "r_arm_j7",
+        "joint": "idx67_arm_r_joint7"
+      },
+      {
+        "name": "l_effector",
+        "joint": "idx31_gripper_l_inner_joint1",
+        "gripperMax": 1.0
+      },
+      {
+        "name": "r_effector",
+        "joint": "idx71_gripper_r_inner_joint1",
+        "gripperMax": 1.0
+      },
+      {
+        "name": "head_yaw",
+        "joint": "idx11_head_joint1"
+      },
+      {
+        "name": "head_pitch",
+        "joint": "idx12_head_joint2"
+      },
+      {
+        "name": "waist_pitch",
+        "joint": "idx02_body_joint2"
+      },
+      {
+        "name": "waist_lift",
+        "joint": "idx01_body_joint1"
+      },
+      {
+        "name": "vel_x",
+        "joint": null
+      },
+      {
+        "name": "vel_yaw",
+        "joint": null
+      }
+    ],
+    "cameraPose": {
+      "pos": [
+        0.0,
+        1.35,
+        0.25
+      ],
+      "target": [
+        0.0,
+        0.75,
+        -0.55
+      ]
+    },
+    "cameras": [
+      {
+        "id": "head",
+        "label": "head cam",
+        "pose": {
+          "pos": [
+            0.0,
+            1.35,
+            0.25
+          ],
+          "target": [
+            0.0,
+            0.75,
+            -0.55
+          ]
+        },
+        "framesBase": "data_agibot/agibot_dashboard/frames_seq"
+      }
+    ],
+    "yaw": 90
+  },
+  "deepcybo_ep0": {
+    "label": "DeepCybo Lite \u2014 episode-0 replay (v3-500)",
+    "urdf": "robot/lite_flash_arm_gripper.urdf",
+    "packages": {
+      "lite_urdf": "./robot"
+    },
+    "fbx": false,
+    "samplesUrl": "data_ep0/samples.json",
+    "runsUrl": "data_ep0/runs.json",
+    "framesSeqBase": "data_ep0/frames_seq",
+    "horizon": 24,
+    "cameraLink": "head_camera_link",
+    "dims": [
+      {
+        "name": "left_shoulder_pitch",
+        "joint": "left_shoulder_pitch_joint"
+      },
+      {
+        "name": "left_shoulder_roll",
+        "joint": "left_shoulder_roll_joint"
+      },
+      {
+        "name": "left_shoulder_yaw",
+        "joint": "left_shoulder_yaw_joint"
+      },
+      {
+        "name": "left_elbow_pitch",
+        "joint": "left_elbow_pitch_joint"
+      },
+      {
+        "name": "left_wrist_yaw",
+        "joint": "left_wrist_yaw_joint"
+      },
+      {
+        "name": "left_wrist_roll",
+        "joint": "left_wrist_roll_joint"
+      },
+      {
+        "name": "left_wrist_pitch",
+        "joint": "left_wrist_pitch_joint"
+      },
+      {
+        "name": "right_shoulder_pitch",
+        "joint": "right_shoulder_pitch_joint"
+      },
+      {
+        "name": "right_shoulder_roll",
+        "joint": "right_shoulder_roll_joint"
+      },
+      {
+        "name": "right_shoulder_yaw",
+        "joint": "right_shoulder_yaw_joint"
+      },
+      {
+        "name": "right_elbow_pitch",
+        "joint": "right_elbow_pitch_joint"
+      },
+      {
+        "name": "right_wrist_yaw",
+        "joint": "right_wrist_yaw_joint"
+      },
+      {
+        "name": "right_wrist_roll",
+        "joint": "right_wrist_roll_joint"
+      },
+      {
+        "name": "right_wrist_pitch",
+        "joint": "right_wrist_pitch_joint"
+      },
+      {
+        "name": "left_gripper",
+        "joint": "left_gripper_joint",
+        "gripperMax": 0.5
+      },
+      {
+        "name": "right_gripper",
+        "joint": "right_gripper_joint",
+        "gripperMax": 0.5
+      }
+    ],
+    "replay": true,
+    "cameras": [
+      {
+        "id": "head",
+        "label": "head cam",
+        "link": "head_camera_link",
+        "framesBase": "data_ep0/frames_seq",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 80
+        }
+      },
+      {
+        "id": "wl",
+        "label": "wrist LEFT",
+        "link": "left_wrist_camera_link",
+        "framesBase": "data_ep0/frames_seq_wl",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 125
+        }
+      },
+      {
+        "id": "wr",
+        "label": "wrist RIGHT",
+        "link": "right_wrist_camera_link",
+        "framesBase": "data_ep0/frames_seq_wr",
+        "calib": {
+          "dp": [
+            0,
+            0,
+            0
+          ],
+          "eul": [
+            0,
+            0,
+            0
+          ],
+          "fov": 125
+        }
+      }
+    ],
+    "dreams": {
+      "v3_2000_episode0_replay": "data_ep0/dream_seq_2000",
+      "v3_2500_fastcfg_ep0_replay": "data_ep0/dream_seq_2500fast"
+    }
+  },
+  "agibot_replay": {
+    "label": "AgiBot G1 \u2014 episode replay (reference policy)",
+    "urdf": "robot_g1/G1_omnipicker.urdf",
+    "packages": {
+      "genie_robot_description": "./robot_g1/genie_robot_description"
+    },
+    "fbx": true,
+    "samplesUrl": "data_agibot_replay/samples.json",
+    "runsUrl": "data_agibot_replay/runs.json",
+    "framesSeqBase": "data_agibot_replay",
+    "horizon": 48,
+    "cameraLink": null,
+    "dims": [
+      {
+        "name": "l_arm_j1",
+        "joint": "idx21_arm_l_joint1"
+      },
+      {
+        "name": "l_arm_j2",
+        "joint": "idx22_arm_l_joint2"
+      },
+      {
+        "name": "l_arm_j3",
+        "joint": "idx23_arm_l_joint3"
+      },
+      {
+        "name": "l_arm_j4",
+        "joint": "idx24_arm_l_joint4"
+      },
+      {
+        "name": "l_arm_j5",
+        "joint": "idx25_arm_l_joint5"
+      },
+      {
+        "name": "l_arm_j6",
+        "joint": "idx26_arm_l_joint6"
+      },
+      {
+        "name": "l_arm_j7",
+        "joint": "idx27_arm_l_joint7"
+      },
+      {
+        "name": "r_arm_j1",
+        "joint": "idx61_arm_r_joint1"
+      },
+      {
+        "name": "r_arm_j2",
+        "joint": "idx62_arm_r_joint2"
+      },
+      {
+        "name": "r_arm_j3",
+        "joint": "idx63_arm_r_joint3"
+      },
+      {
+        "name": "r_arm_j4",
+        "joint": "idx64_arm_r_joint4"
+      },
+      {
+        "name": "r_arm_j5",
+        "joint": "idx65_arm_r_joint5"
+      },
+      {
+        "name": "r_arm_j6",
+        "joint": "idx66_arm_r_joint6"
+      },
+      {
+        "name": "r_arm_j7",
+        "joint": "idx67_arm_r_joint7"
+      },
+      {
+        "name": "l_effector",
+        "joint": "idx31_gripper_l_inner_joint1",
+        "gripperMax": 1.0
+      },
+      {
+        "name": "r_effector",
+        "joint": "idx71_gripper_r_inner_joint1",
+        "gripperMax": 1.0
+      },
+      {
+        "name": "head_yaw",
+        "joint": "idx11_head_joint1"
+      },
+      {
+        "name": "head_pitch",
+        "joint": "idx12_head_joint2"
+      },
+      {
+        "name": "waist_pitch",
+        "joint": "idx02_body_joint2"
+      },
+      {
+        "name": "waist_lift",
+        "joint": "idx01_body_joint1"
+      },
+      {
+        "name": "vel_x",
+        "joint": null
+      },
+      {
+        "name": "vel_yaw",
+        "joint": null
+      }
+    ],
+    "cameraPose": {
+      "pos": [
+        0.0,
+        1.35,
+        0.25
+      ],
+      "target": [
+        0.0,
+        0.75,
+        -0.55
+      ]
+    },
+    "replay": true,
+    "cameras": [
+      {
+        "id": "head",
+        "label": "head cam",
+        "pose": {
+          "pos": [
+            0.0,
+            1.35,
+            0.25
+          ],
+          "target": [
+            0.0,
+            0.75,
+            -0.55
+          ]
+        },
+        "framesBase": "data_agibot_replay"
+      }
+    ],
+    "yaw": 90
+  }
+}

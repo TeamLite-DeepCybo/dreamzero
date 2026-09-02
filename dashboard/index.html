@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DreamZero DeepCybo — Open-Loop Eval Dashboard</title>
+<style>
+  :root { --bg:#111318; --panel:#1a1e26; --line:#2a3040; --txt:#dbe2ee; --dim:#8a93a6;
+          --good:#4caf7d; --warn:#e0a93e; --bad:#e05d5d; --accent:#7aa2f7; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:13px/1.45 -apple-system,'Segoe UI',sans-serif; }
+  #layout { display:grid; grid-template-columns:270px 1fr 380px; grid-template-rows:52px 1fr; height:100vh; }
+  header { grid-column:1/4; display:flex; align-items:center; gap:16px; padding:0 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; font-weight:600; }
+  header select { background:#232936; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:4px 8px; }
+  #runstats { color:var(--dim); }
+  #runstats b { color:var(--txt); }
+  #samples { overflow-y:auto; border-right:1px solid var(--line); background:var(--panel); }
+  #samples .controls { position:sticky; top:0; background:var(--panel); padding:8px; border-bottom:1px solid var(--line); display:flex; gap:6px; }
+  .sample { padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .sample:hover { background:#222836; }
+  .sample.active { background:#26304a; border-left:3px solid var(--accent); }
+  .sample .top { display:flex; justify-content:space-between; }
+  .sample .prompt { color:var(--dim); font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip { border-radius:8px; padding:0 7px; font-size:11px; font-weight:600; }
+  #viewer { position:relative; }
+  #arframe { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; display:none; background:#000; }
+  #three { width:100%; height:100%; display:block; }
+  #playbar { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; gap:10px; align-items:center;
+             background:#1a1e26cc; padding:8px 14px; border-radius:10px; border:1px solid var(--line); }
+  #playbar input[type=range] { width:260px; }
+  #legend { position:absolute; top:12px; left:12px; background:#1a1e26cc; padding:8px 12px; border-radius:8px; border:1px solid var(--line); font-size:12px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:5px; margin-right:5px; }
+  #detail { overflow-y:auto; border-left:1px solid var(--line); background:var(--panel); padding:12px; }
+  #detail img { width:100%; border-radius:8px; border:1px solid var(--line); }
+  #detail h3 { margin:12px 0 6px; font-size:13px; color:var(--dim); text-transform:uppercase; letter-spacing:.05em; }
+  canvas.chart { width:100%; background:#141821; border:1px solid var(--line); border-radius:8px; }
+  #dimgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .metric-row { display:flex; justify-content:space-between; padding:3px 0; }
+  button { background:#232936; color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:4px 10px; cursor:pointer; }
+  button:hover { background:#2c3444; }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "three/examples/jsm/loaders/STLLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/STLLoader.js",
+    "three/examples/jsm/loaders/ColladaLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/ColladaLoader.js",
+    "three/examples/jsm/loaders/GLTFLoader.js": "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js",
+    "urdf-loader": "https://unpkg.com/urdf-loader@0.12.6/src/URDFLoader.js"
+} }
+</script>
+</head>
+<body>
+<div id="layout">
+  <header>
+    <h1>DreamZero · DeepCybo Lite — Open-Loop Eval</h1>
+    <label>Robot: <select id="profsel"></select></label>
+    <label>Run: <select id="runsel"></select></label>
+    <label>Smooth: <select id="smoothsel" title="applied to predicted actions; MSE/ratio recomputed live">
+      <option value="none">raw</option>
+      <option value="b3">3-tap (serving default)</option>
+      <option value="b5">5-tap</option>
+      <option value="ema5">EMA α=0.5</option>
+      <option value="ema3">EMA α=0.3</option>
+    </select></label>
+    <span id="runstats"></span>
+  </header>
+  <div id="samples"><div class="controls">
+      <button data-sort="ratio_asc">worst first</button>
+      <button data-sort="ratio_desc">best first</button>
+      <button data-sort="idx">by index</button>
+  </div><div id="samplelist"></div></div>
+  <div id="viewer">
+    <img id="arframe">
+    <canvas id="dreamframe" width="480" height="360"
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;pointer-events:none"></canvas>
+    <canvas id="three" style="position:relative"></canvas>
+    <div id="legend">
+      <label><input type="checkbox" id="showpred" checked> <span class="dot" style="background:#7aa2f7"></span>predicted (solid blue)</label><br>
+      <label><input type="checkbox" id="showgt" checked> <span class="dot" style="background:#35e08a"></span>ground truth (green hologram)</label>
+      <span id="planctl" style="display:none"><br>
+      <label><input type="checkbox" id="planshow"> <span class="dot" style="background:#e0a93e"></span>plan preview (unexecuted)</label>
+      <input type="range" id="planahead" min="1" max="23" value="16" style="width:70px;vertical-align:middle">
+      <span id="planaheadlabel">+16</span> steps ahead</span>
+    </div>
+    <div id="calibbanner" style="display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#2a3350ee;border:1px solid var(--accent);border-radius:10px;padding:10px 16px;font-size:14px;z-index:5">
+      <span>Scrub to any frame, pick a part, click it in the video:</span>
+      <select id="calibkey" style="margin-left:8px"></select>
+      <b id="calibcount" style="margin-left:10px">0 pts</b>
+      <button id="calibsolve" style="margin-left:10px">solve (≥4)</button>
+      <button id="calibundo" style="margin-left:4px">undo</button>
+      <button id="calibcancel" style="margin-left:4px">cancel</button>
+    </div>
+    <div id="manualcal" style="display:none;position:absolute;top:12px;right:12px;background:#1a1e26dd;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:11px;z-index:6;width:190px">
+      <b style="font-size:12px">adjust view</b> <button id="mcreset" style="float:right;font-size:10px;padding:1px 6px">reset</button>
+      <div>shift ←→ <input type="range" class="mc" data-k="dx" min="-0.5" max="0.5" step="0.005" value="0" style="width:100%"></div>
+      <div>shift ↑↓ <input type="range" class="mc" data-k="dy" min="-0.5" max="0.5" step="0.005" value="0" style="width:100%"></div>
+      <div>near/far <input type="range" class="mc" data-k="dz" min="-0.6" max="0.6" step="0.005" value="0" style="width:100%"></div>
+      <div>yaw <input type="range" class="mc" data-k="ry" min="-180" max="180" step="0.5" value="0" style="width:100%"></div>
+      <div>pitch <input type="range" class="mc" data-k="rx" min="-180" max="180" step="0.5" value="0" style="width:100%"></div>
+      <div>roll <input type="range" class="mc" data-k="rz" min="-180" max="180" step="0.5" value="0" style="width:100%"></div>
+      <div>fov <input type="range" class="mc" data-k="fov" min="30" max="150" step="0.5" value="80" style="width:100%"></div>
+    </div>
+    <div id="dreamctl" style="display:none;position:absolute;bottom:64px;left:12px;background:#1a1e26dd;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:11px;z-index:6;width:180px">
+      <b style="font-size:12px">🌙 dreamed future</b><br>
+      <label><input type="checkbox" id="dreamsolo"> solo (hide real video)</label>
+      <div>dream α <input type="range" id="dreamalpha" min="0" max="100" value="60" style="width:100%"></div>
+      <div>video α <input type="range" id="videoalpha" min="0" max="100" value="100" style="width:100%"></div>
+    </div>
+    <div id="playbar">
+      <button id="play">▶</button>
+      <button id="camview" title="render from a robot camera over real video">📷 cam view</button>
+      <button id="dreambtn" title="overlay the model's imagined future video" style="display:none">🌙 dream</button>
+      <button id="fisheye" title="warp the render to match the fisheye lens (toggle off for plain pinhole)">🐟 fisheye</button>
+      <select id="camsel" style="display:none"></select>
+      <input type="range" id="fov" min="30" max="150" value="80" style="width:70px" title="camera FOV (vertical); head cam is a ~147° fisheye so a pinhole overlay only matches near center">
+      <button id="calib" title="click robot parts in the video to solve camera pose">🎯 calibrate</button>
+      <button id="calibreset" title="discard saved calibration">↺</button>
+      <input type="range" id="tslider" min="0" max="23" value="0">
+      <span id="tlabel">t=0 (0 ms)</span>
+    </div>
+  </div>
+  <div id="detail">Select a sample.</div>
+</div>
+<div id="errbox" style="display:none;position:fixed;bottom:8px;right:8px;max-width:46vw;max-height:30vh;overflow:auto;background:#5c1a1a;border:1px solid #e05d5d;color:#ffd7d7;font:11px monospace;padding:8px;border-radius:8px;z-index:99"></div>
+<script>
+  window.addEventListener('error', (e) => {
+    const b = document.getElementById('errbox');
+    b.style.display = 'block';
+    b.textContent += `${e.message} @ ${(e.filename||'').split('/').pop()}:${e.lineno}\n`;
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const b = document.getElementById('errbox');
+    b.style.display = 'block';
+    b.textContent += `PROMISE: ${e.reason && (e.reason.stack || e.reason.message || e.reason)}\n`;
+  });
+</script>
+<script type="module" src="app.js?v=1788161714"></script>
+</body>
+</html>

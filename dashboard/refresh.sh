@@ -3,7 +3,9 @@
 # Any results/<name>_dense/chunks.npz on the A6000 becomes a dashboard run —
 # including runs pushed there from other machines (B300 etc.).
 cd "$(dirname "$0")"
-WAM="192.168.100.124"
+# Account name intentionally not in git — ask the team, then:
+#   export DASH_REMOTE=<user>@192.168.100.124   (or configure an ssh alias)
+WAM="${DASH_REMOTE:-192.168.100.124}"
 CP="-o ControlPath=$HOME/.ssh/sockets/wam"
 for run in $(ssh $CP $WAM 'cd ~/dreamzero_eval/results && ls -d *_dense/chunks.npz 2>/dev/null | cut -d/ -f1'); do
   scp -q $CP $WAM:~/dreamzero_eval/results/$run/chunks.npz data/$run.npz && echo "$run synced"

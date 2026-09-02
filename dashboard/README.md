@@ -22,7 +22,8 @@ cd dashboard
 python3 -m venv .venv && .venv/bin/pip install numpy
 
 # 3. Pull eval results and build the dashboard JSON
-#    (requires SSH access to the storage machine, see below)
+#    (requires SSH access to the storage machine, see below;
+#     export DASH_REMOTE=<user>@192.168.100.124 first)
 ./refresh.sh
 
 # 4. Serve

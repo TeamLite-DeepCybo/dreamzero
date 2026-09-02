@@ -146,8 +146,7 @@ Results feed the eval dashboard (`dashboard/` on that branch).
 
 ## Existing checkpoints and where everything lives
 
-Internal machines (addresses and credentials: ask the team; the machine map
-is in `docs/BRANCHES.md`):
+The machines involved (the address map is in `docs/BRANCHES.md`):
 
 - **The A6000 machine** (48 GB) — storage/eval box. Long-term home of all
   artifacts, under `~/dreamzero_eval/`:

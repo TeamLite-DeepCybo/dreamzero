@@ -56,7 +56,7 @@ layout it was trained on.
 
 ## Machines and artifacts
 
-Internal machines (LAN `192.168.100.x`; ask the team for credentials):
+The machines this project runs on (internal network):
 
 | machine | role |
 |---|---|

@@ -3,7 +3,7 @@
 # Any results/<name>_dense/chunks.npz on the A6000 becomes a dashboard run —
 # including runs pushed there from other machines (B300 etc.).
 cd "$(dirname "$0")"
-# Account name intentionally not in git — ask the team, then:
+# Point DASH_REMOTE at the storage machine before running, e.g.:
 #   export DASH_REMOTE=<user>@192.168.100.124   (or configure an ssh alias)
 WAM="${DASH_REMOTE:-192.168.100.124}"
 CP="-o ControlPath=$HOME/.ssh/sockets/wam"

@@ -1,10 +1,13 @@
 # Eval dashboard
 
 A static web dashboard for inspecting open-loop eval runs of our DreamZero
-checkpoints: per-sample horizon-24 MSE vs the hold-position baseline, MSE(t)
-divergence charts, a 3D robot replay of predicted vs ground-truth actions
-(three.js + urdf-loader), camera-frame context, and dreamed-video overlays
-for runs evaluated with `--dump_dream_dir`.
+checkpoints. Each eval run predicts 24 actions at sampled moments of the
+teleop dataset and scores them against what the operator actually did; the
+dashboard shows, per sample: that 24-step MSE (compared against a
+"keep still" baseline), how the error grows across the 24 steps, a 3D robot
+replay of predicted vs ground-truth motion (three.js + urdf-loader), the
+camera frames at that moment, and the model's dreamed-video frames for runs
+evaluated with `--dump_dream_dir`.
 
 No build step and no backend: plain HTML/JS served statically, with three.js
 and urdf-loader loaded from CDN import maps (needs internet access in the

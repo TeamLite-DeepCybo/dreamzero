@@ -15,8 +15,18 @@ Headline (1× RTX PRO 6000 Blackwell 96GB, single GPU):
 | `DZ_DIT_MASK=0,1,2` + no-CFG + compile | 0.82–1.06 (mean 0.90) | 1.1× | **2.15×** |
 | `DZ_DIT_MASK=0,1` + no-CFG + compile | 0.64–0.89 (mean **0.71**) | **sub-realtime** | 2.11× |
 
-\* HORIZON-24 MSE ratio vs hold-position baseline, 91-sample dense grid,
-b300 step-5000 checkpoint. Bigger is better; 1.0 = no better than freezing.
+\* **How quality is measured** (offline, no robot): we pick a test point
+every 460 rows of the teleop dataset — 91 points spread across all 150
+episodes. At each point the model gets the real camera frames and joint
+state up to that moment and predicts the next 24 actions (0.8 s at 30 Hz);
+MSE is computed against what the human operator actually did over those 24
+steps. "Hold" is a do-nothing baseline that keeps the current pose for the
+whole 24 steps; its MSE on the same 91 points is 0.0352. The quality score
+is hold-MSE ÷ model-MSE — 1.0 means no better than freezing, 2.0 means half
+the error of freezing. Every number in this document uses the same 91
+points and the same baseline, so they compare directly. Checkpoint: b300
+step-5000 throughout this table.
+
 A chunk is 24 actions at 30 Hz = 0.8 s of robot motion. Fewer, earlier
 denoise steps measurably **improve** action MSE on this action head (the
 sweep is monotonic: mask {0,1,2} 2.15 > {0,1,5} 2.06 > {0,1,8} 1.97 >
@@ -138,7 +148,7 @@ modules). Unset ⇒ upstream behavior.
 | `DZ_DYN_THRESH` | `0.95,0.93;4,2` | dyncache thresholds;countdowns override |
 | `DZ_DYN_FORCE_LAST` | int N | force-compute the last N steps under dyncache. Measured (N=3): reverts exactly to the static-mask numbers at higher cost. |
 
-Measured (teacher-forced dense grid, b300 step-5000): `DZ_DIT_MASK=0,1,2`
+Measured (standard 91-point eval, b300 step-5000): `DZ_DIT_MASK=0,1,2`
 scored the best ratio measured so far (2.15×) at 0.90 s/chunk; `0,1` ran
 sub-realtime (0.71 s) at 2.11×. In the sweep, quality degraded monotonically
 as the last computed step moved later. None of these masks has run on a
@@ -186,10 +196,16 @@ python scripts/open_loop_deepcybo.py \
   --output_dir results/myrun --dump_dream_dir results/myrun/dream_seq
 ```
 
-Prints `HORIZON-24 MSE model / hold-baseline / ratio` (the honest metric —
-first-step MSE is misleading because a hold-position baseline is nearly
-optimal at 1 step) and saves `chunks.npz` (pred/gt/hold/idx) for the
-dashboard. `--dump_dream_dir` writes the dreamed frames.
+`--num_samples 100 --stride 460` means "one test point every 460 dataset
+rows, up to 100 of them" (points too close to an episode's end are skipped,
+which is how the standard grid ends up at 91). At each point the model
+predicts the next 24 actions from the real frames; the script prints
+`HORIZON-24 MSE model / hold-baseline / ratio` — the model's 24-step
+prediction error, the error of simply not moving for those 24 steps, and
+baseline ÷ model. Score the full 24 steps, not just the first: teleop data
+is slow enough that "don't move" is nearly optimal at 1 step, so first-step
+MSE can't distinguish models. Also saves `chunks.npz` (pred/gt/hold/idx)
+for the dashboard; `--dump_dream_dir` writes the dreamed frames.
 
 **AR latency bench** (`--bench_ar N --bench_sessions 2`): per session, one
 cold 1-frame call then N warm 4-frame calls on the real KV cache; session 2

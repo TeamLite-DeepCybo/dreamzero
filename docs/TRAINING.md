@@ -36,7 +36,7 @@ huggingface-cli download Wan-AI/Wan2.1-I2V-14B-480P     --local-dir ./checkpoint
 huggingface-cli download google/umt5-xxl                --local-dir ./checkpoints/umt5-xxl
 ```
 
-All three are also mirrored on the internal storage machine (below), which
+All three are also mirrored on the internal A6000 machine (below), which
 is faster than HuggingFace from the office LAN.
 
 **Dataset**: the boat-sorting teleop set (150 episodes / 46,668 rows,
@@ -146,10 +146,11 @@ Results feed the eval dashboard (`dashboard/` on that branch).
 
 ## Existing checkpoints and where everything lives
 
-Internal machines (LAN `192.168.100.x`; ask the team for credentials):
+Internal machines (addresses and credentials: ask the team; the machine map
+is in `docs/BRANCHES.md`):
 
-- **Storage/eval machine** — `192.168.100.124`
-  (A6000 48 GB). Long-term home of all artifacts, under `~/dreamzero_eval/`:
+- **The A6000 machine** (48 GB) — storage/eval box. Long-term home of all
+  artifacts, under `~/dreamzero_eval/`:
   - `checkpoints/DreamZero-AgiBot/`, `checkpoints/umt5-xxl-tokenizer/` —
     base model + tokenizer mirrors
   - `checkpoints/b300_b16_{2500,3000,5000}_lora_ckpt/` — the batch-16 series
@@ -166,11 +167,16 @@ Internal machines (LAN `192.168.100.x`; ask the team for credentials):
   - `checkpoints/b300_native_smoke/` — reference eval outputs from the
     training machine
   - `datasets/` — both dataset conversions; `results/` — eval runs
-- **Inference machine** — `192.168.100.196`
-  (RTX Pro 6000 96 GB): working copies of checkpoints/datasets, the serving
-  stack, and fast evals. The base model and the serving venv live in
-  `/dev/shm` there (RAM-backed — gone after a reboot; re-copy from the
-  storage machine).
+- **The B300 training machine** — training outputs land in
+  `/hdfs/share-data-1/projects/dreamzero/runs/<task_name>/` (a
+  `checkpoint-<step>/` directory per save, plus `train.log` and
+  `experiment_record.json`). The published batch-16 series came from the
+  `v3_b300_batch8_eff16_v3` run there; steps 2500/3000/5000 are mirrored to
+  the A6000 machine as the `b300_b16_*` packages above.
+- **The Pro 6000 machine** (96 GB) — inference box: working copies of
+  checkpoints/datasets, the serving stack, and fast evals. The base model
+  and the serving venv live in `/dev/shm` there (RAM-backed — gone after a
+  reboot; re-copy from the A6000 machine).
 
 Measured quality reference (teacher-forced dense grid, ratio vs hold
 baseline — higher is better): `b300_b16_5000` 1.75× at default inference

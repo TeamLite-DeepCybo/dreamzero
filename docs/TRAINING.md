@@ -149,6 +149,51 @@ because teleop motion is slow enough that not moving is nearly optimal for
 a single step. Results feed the eval dashboard (`dashboard/` on that
 branch).
 
+## Completed runs
+
+Two successful post-training runs so far, both LoRA (rank 4, alpha 4,
+targets `q,k,v,o,ffn.0,ffn.2` + projector heads) from the same
+`DreamZero-AgiBot` base, both LR 1e-4 with cosine decay and checkpoints
+every 500 steps.
+
+### Batch-16 run on the B300 machine (`v3_b300_batch8_eff16_v3`)
+
+![B300 run training curves](images/b300loss.png)
+
+| | |
+|---|---|
+| dataset | `lite_boat_full_deepcybo` (B300 layout) |
+| hardware / batch | 2× B300, batch 8 per GPU → effective batch 16, no grad accum |
+| LR / decay / warmup | 1e-4, cosine to 0 over 5 000 steps, warmup ratio 0.05 |
+| weight decay | 1e-5 |
+| steps | 5 000 (completed) |
+| step time | ~49 s |
+| final losses | train/loss 0.050, action_loss_avg 0.0091, dynamics_loss_avg ~0.042 |
+| checkpoints | every 500 steps; 2500/3000/5000 mirrored to the A6000 machine (`b300_b16_*`) |
+| best eval | step 5000: 1.75× at default inference settings, 2.15× with the 3-step denoise mask |
+
+### v3 run on the Pro 6000 machine
+
+![Pro 6000 v3 run training curves](images/pro6000loss.png)
+
+| | |
+|---|---|
+| dataset | `deepcybo_lite_bilateral_gear` (our layout) |
+| hardware / batch | 1× RTX Pro 6000 96 GB, batch 1 + gradient accumulation 8 → effective batch 8 |
+| LR / decay | 1e-4, cosine (planned over 5 000 steps) |
+| steps | stopped at 2 500 of 5 000 — machine disk failure, not convergence |
+| step time | ~14 s per micro-batch in the chart; ~2 min per optimizer step with the 8× accumulation |
+| final losses (step 2500) | train/loss 0.057, action_loss_avg 0.0188, dynamics_loss_avg ~0.051 |
+| checkpoints | 500–2500 on the A6000 machine (`v3-checkpoint-*`) |
+| best eval | step 2500: 1.80× with the full inference stack |
+
+Reading the curves: `action_loss_avg` is the number that tracks eval quality
+(the dynamics/video loss plateaus early for both runs). The batch-16 run
+reaches roughly half the action loss of the v3 run — partly 2× more steps,
+partly 2× the effective batch. Earlier v2 experiments at LR 1e-5 plateaued
+at action loss ~0.027 without ever beating the keep-still baseline; 1e-4 is
+what made these runs work.
+
 ## Existing checkpoints and where everything lives
 
 The machines involved (the address map is in `docs/BRANCHES.md`):
